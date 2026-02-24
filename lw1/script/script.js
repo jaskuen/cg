@@ -3,7 +3,7 @@ const ANTI_ALIAS_SWITCH_ID = 'anti-alias';
 
 const LOCAL_STORAGE_TASK_NAME = 'currentTask';
 
-const DRAW_INTERVAL = 20;
+const DRAW_INTERVAL = 50;
 
 class MyCanvas {
     constructor(document, canvasElementId, options = {}) {
@@ -33,15 +33,11 @@ class MyCanvas {
         this.pixelSize = Math.max(1, Math.round(size));
     }
 
-    setBackground(color) {
-        this.background = color;
-    }
-
     plot(x, y, canUseAntiAlias = false) {
-        if (x + this.pixelSize > this.width || x - this.pixelSize / 2 < 0) {
+        if (x - this.pixelSize / 2 > this.width || x + this.pixelSize / 2 < 0) {
             return;
         }
-        if (y + this.pixelSize > this.height || y - this.pixelSize / 2 < 0) {
+        if (y - this.pixelSize / 2 > this.height || y + this.pixelSize / 2 < 0) {
             return;
         }
 
@@ -51,7 +47,6 @@ class MyCanvas {
         this.ctx.fillRect(px, py, ps, ps);
 
         if (canUseAntiAlias && this.useAntiAliasing) {
-            this.ctx.globalAlpha = 0.8;
             let delta = 7;
             switch (ps) {
                 case 1:
@@ -61,10 +56,16 @@ class MyCanvas {
                 default: delta = 10; break;
             }
 
-            delta = ps / delta;
+            const count = 10;
+            const alphaDelta = 0.4 / count;
 
-            this.ctx.fillRect(px - delta, py - delta, ps + delta * 2, ps + delta * 2);
-            this.ctx.globalAlpha = 1;
+            for (let i = 1; i <= 10; i++) {
+                let curDelta = ps / (delta * i);
+                this.ctx.globalAlpha = 0.5 + (i * alphaDelta);
+
+                this.ctx.fillRect(px - curDelta, py - curDelta, ps + curDelta * 2, ps + curDelta * 2);
+                this.ctx.globalAlpha = 1;
+            }
         }
     }
 
@@ -95,7 +96,7 @@ class MyCanvas {
     }
 
     rect(x0, y0, x1, y1, color = null) {
-        this.ctx.borderColor = color;
+        if (color !== null) this.ctx.borderColor = color;
         this.ctx.lineWidth = this.pixelSize;
         this.ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
     }
@@ -117,7 +118,7 @@ class MyCanvas {
 
         let x = 0;
         let y = Math.round(radius);
-        let d = 3 - 2 * y;
+        let d = 10 - 2 * y;
 
         while (y >= x) {
             this.plot(xc + x, yc + y, true);
@@ -142,12 +143,43 @@ class MyCanvas {
 
     filledCircle(xc, yc, radius, strokeColor = null, fillColor = null) {
         if (fillColor !== null) this.setColor(fillColor);
-        for (let r = 0; r <= radius; r++) {
-            if (r === radius) {
-                if (strokeColor !== null) this.setColor(strokeColor);
+
+        if (radius < 1) return;
+
+        let x = 0;
+        let y = Math.round(radius);
+        let d = 3 - 2 * y;
+
+        let startPixelSize = this.pixelSize;
+
+        // рисуем край
+        this.circle(xc, yc, radius - startPixelSize, fillColor);
+
+        this.setPixelSize(startPixelSize * 3);
+
+        while (y >= x) {
+            this.line(xc, yc, xc + x - startPixelSize, yc + y - startPixelSize, fillColor, true);
+            this.line(xc, yc, xc - x + startPixelSize, yc + y - startPixelSize, fillColor, true);
+            this.line(xc, yc, xc - x + startPixelSize, yc - y + startPixelSize, fillColor, true);
+            this.line(xc, yc, xc + y - startPixelSize, yc + x - startPixelSize, fillColor, true);
+            this.line(xc, yc, xc + y - startPixelSize, yc - x + startPixelSize, fillColor, true);
+            this.line(xc, yc, xc - y + startPixelSize, yc + x - startPixelSize, fillColor, true);
+            this.line(xc, yc, xc - y + startPixelSize, yc - x + startPixelSize, fillColor, true);
+            this.line(xc, yc, xc + x - startPixelSize, yc - y + startPixelSize, fillColor, true);
+
+            x++;
+
+            if (d > 0) {
+                y--;
+                d += 4 * (x - y) + 10;
+            } else {
+                d += 4 * x + 6;
             }
-            this.circle(xc, yc, r);
         }
+
+        this.setPixelSize(startPixelSize);
+
+        this.circle(xc, yc, radius, strokeColor);
     }
 
     setAntiAliasing(useAntiAliasing) {
@@ -164,7 +196,6 @@ class JumpingFiguresDrawing {
         this.currentPos = 0;
         this.direction = 1;
 
-        this.jumpRange = 100;
         this.delta = 2;
 
         this.speed = Math.round(Math.random() * 20);
@@ -205,7 +236,24 @@ class Letter1 extends JumpingFiguresDrawing {
 
 class Letter2 extends JumpingFiguresDrawing {
     onDraw(canvas, deltaY) {
+        // ставить начало координат в (x; y), потом обратно
         const x = 320;
+        const y = 150 + deltaY;
+
+        canvas.setColor('#FF0000');
+        let prevSize = canvas.pixelSize;
+        canvas.setPixelSize(30);
+        canvas.line(x + 15, y + 15, x + 30, y + 35);
+        canvas.line(x + 60, y + 35, x + 75, y + 15);
+        canvas.setPixelSize(prevSize);
+        canvas.filledRect(x, y, x + 30, y + 100);
+        canvas.filledRect(x + 60, y, x + 90, y + 100);
+    }
+}
+
+class Letter3 extends JumpingFiguresDrawing {
+    onDraw(canvas, deltaY) {
+        const x = 450;
         const y = 150 + deltaY;
 
         canvas.setColor('#654321');
@@ -216,94 +264,112 @@ class Letter2 extends JumpingFiguresDrawing {
     }
 }
 
-class Letter3 extends JumpingFiguresDrawing {
-    onDraw(canvas, deltaY) {
-        const x = 450;
-        const y = 150 + deltaY;
+class Menu {
+    addButton(id, onClick) {
+        if (id == null) throw("Id cannot be null");
 
-        canvas.setColor('#FF0000');
-        canvas.filledRect(x, y, x + 70, y + 25);
-        canvas.filledCircle(x + 15, y + 85, 13);
-        canvas.filledRect(x, y, x + 30, y + 85);
-        canvas.filledRect(x - 30, y + 70, x + 15, y + 100);
-        canvas.filledRect(x + 60, y, x + 90, y + 100);
+        const button = document.getElementById(id);
+        if (button == null) throw("Failed to get ");
+
+        button.addEventListener('click', onClick);
     }
 }
 
-let currentTask = 1;
+class TaskRenderer {
+    constructor() {
+        this.taskMap = new Map();
+        let currentTask = parseInt(localStorage.getItem(LOCAL_STORAGE_TASK_NAME));
 
+        if (currentTask == null || currentTask === 0) {
+            currentTask = 1;
+        }
+
+        this.currentTask = currentTask;
+
+    }
+
+    setCurrentTask(num, doRerender) {
+        this.currentTask = num;
+        localStorage.setItem(LOCAL_STORAGE_TASK_NAME, num);
+
+        if (doRerender) {
+            this.renderTask();
+        }
+    }
+
+    addTask(taskNum, func) {
+        this.taskMap.set(taskNum, func);
+    }
+
+    renderTask() {
+        const func = this.taskMap.get(this.currentTask);
+        func();
+    }
+}
 function main() {
     const canvas = new MyCanvas(window.document, CANVAS_ID, {pixelSize: 2});
-    initMenu(canvas);
+    const taskRenderer = new TaskRenderer(canvas);
 
-    renderCurrentTask(canvas);
+    initMenu(canvas, taskRenderer);
+
+    taskRenderer.renderTask();
 }
 
-async function renderCurrentTask(canvas) {
-    switch (currentTask) {
-        case 1: await task1(canvas); break;
-        case 2: task2(canvas); break;
-        case 3: task3(canvas); break;
-    }
-}
+function initMenu(canvas, taskRenderer) {
+    taskRenderer.addTask(1, async () => { await task1(canvas, taskRenderer); });
+    taskRenderer.addTask(2, () => { task2(canvas); });
+    taskRenderer.addTask(3, () => { task3(canvas); });
 
-function initMenu(canvas) {
-    currentTask = parseInt(localStorage.getItem(LOCAL_STORAGE_TASK_NAME));
+    const menu = new Menu();
 
-    if (currentTask == null || currentTask === 0) {
-        currentTask = 1;
-    }
-
-    const task1 = document.getElementById('task1');
-    const task2 = document.getElementById('task2');
-    const task3 = document.getElementById('task3');
-
-    task1.addEventListener('click', async (event) => {
-        if (currentTask !== 1) {
-            currentTask = 1;
-            localStorage.setItem(LOCAL_STORAGE_TASK_NAME, '1');
-            await renderCurrentTask(canvas);
+    menu.addButton('task1', async () => {
+        if (taskRenderer.currentTask !== 1) {
+            taskRenderer.setCurrentTask(1, true);
         }
     });
-    task2.addEventListener('click', async (event) => {
-        if (currentTask !== 2) {
-            currentTask = 2;
-            localStorage.setItem(LOCAL_STORAGE_TASK_NAME, '2');
-            await renderCurrentTask(canvas);
+
+    menu.addButton('task2', async () => {
+        if (taskRenderer.currentTask !== 2) {
+            taskRenderer.setCurrentTask(2, true);
         }
     });
-    task3.addEventListener('click', async (event) => {
-        if (currentTask !== 3) {
-            currentTask = 3;
-            localStorage.setItem(LOCAL_STORAGE_TASK_NAME, '3');
-            await renderCurrentTask(canvas);
+
+    menu.addButton('task3', async () => {
+        if (taskRenderer.currentTask !== 3) {
+            taskRenderer.setCurrentTask(3, true);
         }
     });
 
     let antiAliasSwitch = document.getElementById(ANTI_ALIAS_SWITCH_ID);
-    antiAliasSwitch.addEventListener('click', async (event) => {
+    antiAliasSwitch.addEventListener('click', async () => {
         canvas.setAntiAliasing(antiAliasSwitch.checked);
-        if (currentTask !== 1) {
-            await renderCurrentTask(canvas);
+        if (taskRenderer.currentTask !== 1) {
+            await taskRenderer.renderTask();
         }
-    })
+    });
 }
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function task1(canvas) {
+async function drawAnimation(func, taskRenderer, taskNumber, delay) {
+    while (taskRenderer.currentTask === taskNumber) {
+        func();
+        await sleep(delay);
+    }
+}
+
+async function task1(canvas, taskRenderer) {
     const letter1 = new Letter1();
     const letter2 = new Letter2();
     const letter3 = new Letter3();
 
     const shapes = [letter1, letter2, letter3];
 
-    while (currentTask === 1) {
-        renderShapes(canvas, shapes);
-        await sleep(DRAW_INTERVAL);
-    }
+    await drawAnimation(() => {
+        renderShapes(canvas, shapes)
+    }, taskRenderer, 1, DRAW_INTERVAL);
 }
 
 function task2(canvas) {
@@ -322,13 +388,13 @@ function task2(canvas) {
     const cy = 300;
 
     const bodyWidth   = 320;
-    const bodyHeight  = 100;
     const wheelRadius = 32;
     const wheelY      = cy + 50;
 
     canvas.clear();
+    canvas.setPixelSize(2);
 
-    // ─── Кузов (основной прямоугольник + скосы) ────────────────────────
+    // Кузов
     canvas.setColor(bodyColor);
 
     // основной корпус
@@ -352,7 +418,7 @@ function task2(canvas) {
         black, bodyColor
     );
 
-    // крыша (тёмная полоса сверху)
+    // крыша
     canvas.filledRect(
         cx - bodyWidth/2 - 5, cy - 70,
         cx + bodyWidth/2 + 5, cy - 55,
@@ -411,9 +477,9 @@ function task2(canvas) {
 
     // Колеса
     canvas.filledCircle(cx - 110, wheelY, wheelRadius, wheelColor, wheelColor);
-    canvas.circle     (cx - 110, wheelY, wheelRadius - 8, wheelRimColor);
+    canvas.circle(cx - 110, wheelY, wheelRadius - 8, wheelRimColor);
     canvas.filledCircle(cx + 110, wheelY, wheelRadius, wheelColor, wheelColor);
-    canvas.circle     (cx + 110, wheelY, wheelRadius - 8, wheelRimColor);
+    canvas.circle(cx + 110, wheelY, wheelRadius - 8, wheelRimColor);
 
     // Провода для усов
     canvas.setColor('#000000');
@@ -442,6 +508,16 @@ function task2(canvas) {
 
 function task3(canvas) {
     canvas.clear();
+
+    canvas.setPixelSize(1);
+    canvas.circle(100, 100, 50);
+
+    canvas.filledCircle(200, 200, 50, '#000000', '#123456');
+
+    canvas.setPixelSize(3);
+    canvas.circle(300, 100, 50);
+
+    canvas.filledCircle(400, 200, 50, '#000000', '#123456');
 }
 
 function renderShapes(canvas, figures) {

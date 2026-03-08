@@ -8,19 +8,18 @@ using SilkOpenGL.Store;
 
 class Program
 {
-    private const string TileShaderName = "ColorShader";
-    private const string CircleShaderName = "CircleShader";
-    private const string TexturedCircleShaderName = "TexturedCircleShader";
+    public const string TileShaderName = "TileShader";
+    public const string CircleShaderName = "CircleShader";
+    public const string TexturedCircleShaderName = "TexturedCircleShader";
 
-    private const string BallTextureName = "BallTexture";
+    public const string BallTextureName = "BallTexture";
+    public const string TileTextureName = "TileTexture";
 
     static void Main(string[] args)
     {
-        var options = WindowOptions.Default;
+        WindowOptions options = WindowOptions.Default;
         options.Size = new Vector2D<int>(1280, 720);
         options.Title = "Multiple Shapes Scene";
-
-        using var window = Window.Create(options);
 
         ShaderStore shaderStore = new ShaderStore();
         shaderStore.CreateShader(TileShaderName, "shader.vert", "shader.frag");
@@ -29,15 +28,14 @@ class Program
 
         TextureStore textureStore = new TextureStore();
         textureStore.CreateTexture(BallTextureName, "ball.png");
+        textureStore.CreateTexture(TileTextureName, "tile.jpg");
 
-        var world = new World(window, shaderStore, textureStore);
+        var world = new World(options, shaderStore, textureStore);
 
         // Создаём и добавляем несколько кубов
-        world.AddObject(new Tile(new Vector2D<float>(-0.8f, -0.8f), TileShaderName));
-        world.AddObject(new Tile(new Vector2D<float>(0.4f, 0.4f), TileShaderName));
-        world.AddObject(new Tile(new Vector2D<float>(0.4f, -0.4f), TileShaderName));
-        world.AddObject(new Circle(new Vector2(-0.3f, 0.3f), 0.5f, Color.Brown, TexturedCircleShaderName,
-            BallTextureName));
+
+        GameField gameField = new GameField(world);
+        world.AddObject(gameField);
 
         world.Run();
     }

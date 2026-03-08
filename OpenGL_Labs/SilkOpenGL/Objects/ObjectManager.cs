@@ -60,6 +60,8 @@ public class ObjectManager
             }
         }
     }
+    
+    public List<RenderableObject> Objects => _objects;
 
     private void ProcessPending(GL gl)
     {

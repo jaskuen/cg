@@ -1,9 +1,10 @@
-﻿using Silk.NET.OpenGL;
+﻿using System.Numerics;
+using Silk.NET.OpenGL;
 using SilkOpenGL.Store;
 
 namespace SilkOpenGL.Objects;
 
-public abstract class RenderableObject
+public abstract class RenderableObject : UpdateableObject, IDisposable
 {
     protected GL _gl;
 
@@ -19,10 +20,12 @@ public abstract class RenderableObject
 
     public string? TextureKey { get; }
     protected Texture? _texture;
-    
+
     protected Transform _transform;
 
     private bool _initialized;
+
+    public Vector3 Position => _transform.Position;
 
     public RenderableObject(string shaderKey)
     {
@@ -34,6 +37,8 @@ public abstract class RenderableObject
         ShaderKey = shaderKey;
         TextureKey = textureKey;
     }
+
+    public abstract void OnRender(double dt);
 
     public virtual void Init(ShaderStore shaderStore, TextureStore textureStore, GL gl)
     {
@@ -47,8 +52,6 @@ public abstract class RenderableObject
     }
 
     protected abstract void OnInit();
-    public abstract void OnUpdate(double dt);
-    public abstract void OnRender(double dt);
 
     public virtual void BindResources()
     {
@@ -58,5 +61,18 @@ public abstract class RenderableObject
     public virtual void OnClose()
     {
         /* Dispose VBO, etc. */
+    }
+
+    public void Dispose()
+    {
+    }
+
+    public virtual unsafe void OnRenderPicking(GL gl, Shader pickingShader)
+    {
+        _vao.Bind();
+        pickingShader.Use();
+        pickingShader.SetUniform("uModel", _transform.ViewMatrix);
+
+        gl.DrawElements(PrimitiveType.Triangles, (uint)_indices.Length, DrawElementsType.UnsignedInt, null);
     }
 }

@@ -17,7 +17,12 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="Helpers\" />
+      <None Update="Picking\picking.frag">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
+      <None Update="Picking\picking.vert">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
     </ItemGroup>
 
 </Project>

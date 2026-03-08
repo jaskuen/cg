@@ -3,6 +3,7 @@ in vec2 vPos;              // от -1 до 1 внутри квадрата
 in vec2 frag_txCoord;
 
 uniform sampler2D uTexture;
+uniform vec4 uColor;  // цвет круга
 
 out vec4 FragColor;
 
@@ -21,5 +22,5 @@ void main()
     if (alpha < 0.01) discard;                   // отсечение (оптимизация)
 
 //    FragColor = vec4(frag_txCoord.x, frag_txCoord.y, 0, alpha);
-    FragColor = texture(uTexture, frag_txCoord) * vec4(1, 1, 1, alpha);
+    FragColor = texture(uTexture, frag_txCoord) * vec4(uColor.x, uColor.y, uColor.z, alpha);
 }

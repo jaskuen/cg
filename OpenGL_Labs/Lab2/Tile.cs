@@ -1,23 +1,35 @@
-﻿using System.Numerics;
-using Silk.NET.Maths;
+﻿using System.Drawing;
+using System.Numerics;
 using Silk.NET.OpenGL;
 using SilkOpenGL;
 using SilkOpenGL.Objects;
 
 namespace Lab2;
 
-public class Tile : RenderableObject
+public class Tile : RenderableObject, IClickable, ITile
 {
-    private const float Size = 0.05f;
+    private float _size;
 
-    private Vector2D<float> _position;
-    private float _deltaScale = 0.05f;
+    private bool _hovered = false;
+    private Color _color;
 
-    public Tile(Vector2D<float> coords, string shaderKey) : base(shaderKey)
+    private Circle? _circle;
+
+    public Circle? Circle => _circle;
+    public Color? BallColor => _circle?.Color ?? null;
+
+    public Action HandleClick { get; set; }
+
+    public Tile(Vector3 coords, float size, Color color, string shaderKey, string textureKey) : base(shaderKey,
+        textureKey)
     {
-        _position = coords;
-        _transform = new Transform();
-        _transform.Position = new Vector3(coords.X, coords.Y, 0f);
+        _size = size;
+        _transform = new Transform
+        {
+            Position = coords
+        };
+
+        _color = color;
     }
 
     protected override void OnInit()
@@ -29,12 +41,12 @@ public class Tile : RenderableObject
         _vao = new VertexArrayObject<float, uint>(_gl, _vbo, _ebo);
 
         //Telling the VAO object how to lay out the attribute pointers
-        _vao.VertexAttributePointer(0, 3, VertexAttribPointerType.Float, 3, 0);
+        _vao.VertexAttributePointer(0, 2, VertexAttribPointerType.Float, 4, 0);
+        _vao.VertexAttributePointer(1, 2, VertexAttribPointerType.Float, 4, 2);
     }
 
     public override void OnUpdate(double delta)
     {
-        Transform(new Vector2D<float>(0.001f, 0.001f));
     }
 
     public override unsafe void OnRender(double delta)
@@ -45,7 +57,13 @@ public class Tile : RenderableObject
 
         // Передача матрицы модели
         _shader.SetUniform("uModel", _transform.ViewMatrix);
-        
+
+        _shader.SetUniform("uColor", _hovered
+            ? Color.Crimson
+            : _circle != null
+                ? Color.HotPink
+                : _color);
+
         if (_texture != null)
         {
             _texture.Bind();
@@ -57,19 +75,15 @@ public class Tile : RenderableObject
         _gl.DrawElements(PrimitiveType.Triangles, (uint)_indices.Length, DrawElementsType.UnsignedInt, null);
     }
 
-    public void Transform(Vector2D<float> delta)
-    {
-        _transform.Scale += _deltaScale;
-        if (Math.Abs(_transform.Scale) > 2f)
-        {
-            _deltaScale *= -1;
-        }
-    }
-
     private void InitVertices()
     {
-        float half = Size / 2f;
+        float half = _size / 2f;
 
+        _indices =
+        [
+            0, 1, 2,
+            1, 2, 3
+        ];
 
         if (_texture == null)
         {
@@ -80,11 +94,56 @@ public class Tile : RenderableObject
                 -half, half, 0.0f,
                 half, half, 0.0f
             ];
-            _indices =
-            [
-                0, 1, 2,
-                1, 2, 3
-            ];
+
+            return;
         }
+
+        _vertices =
+        [
+            -half, -half, 0.0f, 0.0f,
+            half, -half, 1.0f, 0.0f,
+            -half, half, 0.0f, 1.0f,
+            half, half, 1.0f, 1.0f,
+        ];
+    }
+
+    public uint ColorId { get; set; }
+
+    public void OnMouseDown(Vector3 position)
+    {
+        HandleClick?.Invoke();
+    }
+
+    public void OnMouseUp(Vector3 position)
+    {
+    }
+
+    public void OnMouseMove(Vector3 position)
+    {
+    }
+
+    public void OnMouseEnter()
+    {
+        if (_circle is null)
+        {
+            _hovered = true;
+        }
+    }
+
+    public void OnMouseLeave()
+    {
+        _hovered = false;
+    }
+
+    public void PlaceCircle(Circle circle)
+    {
+        _circle = circle;
+    }
+
+    public Circle RemoveCircle()
+    {
+        Circle circle = _circle!;
+        _circle = null;
+        return circle;
     }
 }

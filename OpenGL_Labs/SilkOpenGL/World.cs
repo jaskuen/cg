@@ -1,8 +1,11 @@
 ﻿using System.Drawing;
+using System.Globalization;
+using System.Numerics;
 using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.OpenGL;
 using Silk.NET.Windowing;
+using SilkOpenGL.Helpers;
 using SilkOpenGL.Objects;
 using SilkOpenGL.Store;
 
@@ -13,18 +16,22 @@ public class World
     private IWindow _window;
     private GL _gl;
     private ShaderStore _shaderStore;
-    private TextureStore _textureStore; // Аналогично ShaderStore, если нужно кэшировать текстуры
+    private TextureStore _textureStore;
     private ObjectManager _objectManager;
     private Camera _camera;
+    private PickingService _pickingService;
 
-    public World(IWindow window, ShaderStore shaderStore, TextureStore textureStore)
+    private IClickable? _lastActive;
+
+    public World(WindowOptions windowOptions, ShaderStore shaderStore, TextureStore textureStore)
     {
         _shaderStore = shaderStore;
         _textureStore = textureStore;
         _objectManager = new ObjectManager(_shaderStore, _textureStore);
         _camera = new Camera();
+        _pickingService = new PickingService(windowOptions.Size.X, windowOptions.Size.Y);
 
-        _window = window;
+        _window = Window.Create(windowOptions);
         _window.Load += OnLoad;
         _window.Update += OnUpdate;
         _window.Render += OnRender;
@@ -36,6 +43,12 @@ public class World
     {
         _gl = _window.CreateOpenGL();
 
+        _pickingService.SetupFramebuffer(_gl);
+
+        _gl.Enable(EnableCap.Blend);
+        _gl.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
+
+        RegisterPickingShaders();
         CompileShadersAndTextures();
 
         AddCameraMove();
@@ -72,6 +85,7 @@ public class World
     private void OnFramebufferResize(Vector2D<int> size)
     {
         _gl.Viewport(size);
+        _pickingService.UpdateViewport(size.X, size.Y);
     }
 
     private void OnUnload()
@@ -104,13 +118,123 @@ public class World
 
         // mouse.Cursor.CursorMode = CursorMode.Raw; // для FPS-стиля
         // mouse.MouseMove += (_, delta) => _camera.ProcessMouseMove(mouse, delta);
-        mouse.MouseMove += (_, delta) => Console.WriteLine(delta);
-            
+        mouse.MouseUp += (_, _) => PerformMouseAction(mouse, MouseAction.Up);
+        mouse.MouseDown += (_, _) => PerformMouseAction(mouse, MouseAction.Down);
+        mouse.MouseMove += (_, _) => PerformMouseAction(mouse, MouseAction.Move);
+        // mouse.MouseMove += (_, delta) => Console.WriteLine(delta);
+
         keyboard.KeyDown += (_, _, _) => _camera.ProcessKeyboard(keyboard, 0.05f);
     }
 
+    private void RegisterPickingShaders()
+    {
+        _shaderStore.CreateShader("picking", "./Picking/picking.vert", "./Picking/picking.frag");
+    }
+
+    private uint PerformMouseAction(IMouse mouse, MouseAction action)
+    {
+        Vector2 mousePos = mouse.Position;
+
+        Vector2 clickedPosition =
+            CoordinateHelper.FromViewportToNdc(mousePos, new Vector2(_window.Size.X, _window.Size.Y));
+
+        // Console.WriteLine($"{clickedPosition.X}, {clickedPosition.Y}");
+
+        DrawPickingTextures();
+
+        uint clickedId = _pickingService.ReadIdAt((int)mousePos.X, (int)mousePos.Y);
+
+        if (clickedId != 0)
+        {
+            var target = _objectManager.Objects
+                .OfType<IClickable>()
+                .FirstOrDefault(x => x.ColorId == clickedId);
+
+            if (target != null)
+            {
+                if (_lastActive == null)
+                {
+                    _lastActive = target;
+                    target.OnMouseEnter();
+                }
+                else if (_lastActive.ColorId != clickedId)
+                {
+                    _lastActive?.OnMouseLeave();
+                    _lastActive = target;
+                    target.OnMouseEnter();
+                }
+
+                // ПРЕОБРАЗОВАНИЕ: Получаем мировую координату на глубине объекта
+                // Предположим, что у объекта есть доступ к его Transform или Position
+                float objectZ = (target as RenderableObject)?.Position.Z ?? 0;
+                Vector3 worldPos = _camera.Unproject(mousePos, new Vector2(_window.Size.X, _window.Size.Y), objectZ);
+
+                // Теперь передаем в объект ЧИСТЫЙ Vector3 мировых координат
+                switch (action)
+                {
+                    case MouseAction.Up: target.OnMouseUp(worldPos); break;
+                    case MouseAction.Down: target.OnMouseDown(worldPos); break;
+                    case MouseAction.Move: target.OnMouseMove(worldPos); break;
+                }
+            }
+        }
+        else
+        {
+            _lastActive?.OnMouseLeave();
+            _lastActive = null;
+        }
+
+        return clickedId;
+    }
+
+    private void DrawPickingTextures()
+    {
+        // 1. Очищаем FBO для пикинга
+        _pickingService.BindForRendering();
+        _gl.ClearColor(0, 0, 0, 0); // ID 0 — это "пустота"
+        _gl.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+
+        var pickingShader = _shaderStore.GetShader("picking");
+        pickingShader.Use();
+
+        // Передаем общие матрицы камеры
+        pickingShader.SetUniform("uView", _camera.ViewMatrix);
+        pickingShader.SetUniform("uProjection", _camera.ProjectionMatrix((float)_window.Size.X / _window.Size.Y));
+
+        // 2. Рендерим только кликабельные объекты
+        foreach (var obj in _objectManager.Objects)
+        {
+            if (obj is IClickable clickable)
+            {
+                Vector3 colorId = _pickingService.IdToColor(clickable.ColorId);
+                pickingShader.SetUniform("uPickingColor", colorId);
+                obj.OnRenderPicking(_gl, pickingShader);
+            }
+        }
+
+        // Возвращаемся к обычному буферу экрана
+        _gl.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
+    }
+
     // Публичные методы для добавления/удаления
-    public void AddObject(RenderableObject obj) => _objectManager.Add(obj);
+    public void AddObject(UpdateableObject obj)
+    {
+        if (obj is RenderableObject renderable)
+        {
+            _objectManager.Add(renderable);
+        }
+        else
+        {
+            _window.Update += obj.OnUpdate;
+        }
+
+
+        if (obj is IClickable clickable)
+        {
+            _pickingService.Register(clickable);
+        }
+    }
+
     public void RemoveObject(RenderableObject obj) => _objectManager.Remove(obj);
 
     public void Run() => _window.Run();

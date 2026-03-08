@@ -1,8 +1,12 @@
 ﻿#version 330 core
+in vec2 frag_txCoord;
+
+uniform sampler2D uTexture;
+uniform vec4 uColor;  // цвет круга
 
 out vec4 out_color;
 
 void main()
 {
-    out_color = vec4(1.0, 0.5, 0.2, 1.0);
+    out_color = texture(uTexture, frag_txCoord) * vec4(uColor.x, uColor.y, uColor.z, 0.5);
 }

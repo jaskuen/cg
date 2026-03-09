@@ -22,7 +22,7 @@ public class Camera
     public Matrix4x4 ProjectionMatrix(float aspectRatio)
         => Matrix4x4.CreatePerspectiveFieldOfView(DegreesToRadians(_fov), aspectRatio, 0.1f, 100f);
 
-    public void ProcessKeyboard(IKeyboard keyboard, float dt)
+    public void ProcessKeyboard(IKeyboard keyboard, double dt)
     {
         float speed = 2.5f * (float)dt;
 

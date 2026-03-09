@@ -1,10 +1,9 @@
-﻿using System.Drawing;
-using System.Numerics;
-using Lab2;
-using Silk.NET.Maths;
+﻿using Silk.NET.Maths;
 using Silk.NET.Windowing;
 using SilkOpenGL;
 using SilkOpenGL.Store;
+
+namespace Lab2;
 
 class Program
 {
@@ -30,7 +29,9 @@ class Program
         textureStore.CreateTexture(BallTextureName, "ball.png");
         textureStore.CreateTexture(TileTextureName, "tile.jpg");
 
-        var world = new World(options, shaderStore, textureStore);
+        FontStore fontStore = new FontStore();
+
+        var world = new World(options, shaderStore, textureStore, fontStore);
 
         // Создаём и добавляем несколько кубов
 

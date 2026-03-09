@@ -3,10 +3,12 @@ using System.Numerics;
 using Silk.NET.OpenGL;
 using SilkOpenGL;
 using SilkOpenGL.Objects;
+using Shader = SilkOpenGL.Shader;
+using Texture = SilkOpenGL.Texture;
 
 namespace Lab2;
 
-public class Tile : RenderableObject, IClickable, ITile
+public class Tile : RenderableObject, IClickable
 {
     private float _size;
 
@@ -14,6 +16,7 @@ public class Tile : RenderableObject, IClickable, ITile
     private Color _color;
 
     private Circle? _circle;
+    private bool _active;
 
     public Circle? Circle => _circle;
     public Color? BallColor => _circle?.Color ?? null;
@@ -60,7 +63,7 @@ public class Tile : RenderableObject, IClickable, ITile
 
         _shader.SetUniform("uColor", _hovered
             ? Color.Crimson
-            : _circle != null
+            : _active
                 ? Color.HotPink
                 : _color);
 
@@ -108,6 +111,8 @@ public class Tile : RenderableObject, IClickable, ITile
     }
 
     public uint ColorId { get; set; }
+
+    public void SetActive(bool active) => _active = active;
 
     public void OnMouseDown(Vector3 position)
     {

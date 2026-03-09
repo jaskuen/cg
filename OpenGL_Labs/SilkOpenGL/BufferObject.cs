@@ -26,6 +26,15 @@ public class BufferObject<TDataType> : IDisposable
         }
     }
 
+    public unsafe void Update(Span<TDataType> newData)
+    {
+        Bind();
+        fixed (void* d = newData)
+        {
+            _gl.BufferData(_bufferType, (nuint)(newData.Length * sizeof(TDataType)), d, BufferUsageARB.DynamicDraw);
+        }
+    }
+
     public void Bind()
     {
         //Binding the buffer object, with the correct buffer type.

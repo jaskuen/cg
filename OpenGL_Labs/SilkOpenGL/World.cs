@@ -1,5 +1,4 @@
 ﻿using System.Drawing;
-using System.Globalization;
 using System.Numerics;
 using Silk.NET.Input;
 using Silk.NET.Maths;
@@ -17,17 +16,19 @@ public class World
     private GL _gl;
     private ShaderStore _shaderStore;
     private TextureStore _textureStore;
+    private FontStore _fontStore;
     private ObjectManager _objectManager;
     private Camera _camera;
     private PickingService _pickingService;
 
     private IClickable? _lastActive;
 
-    public World(WindowOptions windowOptions, ShaderStore shaderStore, TextureStore textureStore)
+    public World(WindowOptions windowOptions, ShaderStore shaderStore, TextureStore textureStore, FontStore fontStore)
     {
         _shaderStore = shaderStore;
         _textureStore = textureStore;
-        _objectManager = new ObjectManager(_shaderStore, _textureStore);
+        _fontStore = fontStore;
+        _objectManager = new ObjectManager(_shaderStore, _textureStore, _fontStore);
         _camera = new Camera();
         _pickingService = new PickingService(windowOptions.Size.X, windowOptions.Size.Y);
 
@@ -48,7 +49,7 @@ public class World
         _gl.Enable(EnableCap.Blend);
         _gl.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
 
-        RegisterPickingShaders();
+        RegisterShaders();
         CompileShadersAndTextures();
 
         AddCameraMove();
@@ -63,7 +64,7 @@ public class World
 
     private unsafe void OnRender(double dt)
     {
-        _gl.ClearColor(Color.Chartreuse);
+        _gl.ClearColor(Color.DarkSlateGray);
         _gl.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
         foreach (var kv in _shaderStore.AllShaders)
@@ -121,14 +122,18 @@ public class World
         mouse.MouseUp += (_, _) => PerformMouseAction(mouse, MouseAction.Up);
         mouse.MouseDown += (_, _) => PerformMouseAction(mouse, MouseAction.Down);
         mouse.MouseMove += (_, _) => PerformMouseAction(mouse, MouseAction.Move);
+        
         // mouse.MouseMove += (_, delta) => Console.WriteLine(delta);
 
-        keyboard.KeyDown += (_, _, _) => _camera.ProcessKeyboard(keyboard, 0.05f);
+        _window.Update += dt => _camera.ProcessKeyboard(keyboard, dt);
     }
 
-    private void RegisterPickingShaders()
+    private void RegisterShaders()
     {
         _shaderStore.CreateShader("picking", "./Picking/picking.vert", "./Picking/picking.frag");
+        _shaderStore.CreateShader("text", "./Text/text.vert", "./Text/text.frag");
+        _textureStore.CreateTexture("text", "./Text/font.png");
+        _fontStore.CreateFont("font", "./Text/font.xml");
     }
 
     private uint PerformMouseAction(IMouse mouse, MouseAction action)

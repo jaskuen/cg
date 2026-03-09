@@ -3,13 +3,14 @@ using System.Numerics;
 using Silk.NET.Maths;
 using SilkOpenGL;
 using SilkOpenGL.Objects;
+using SilkOpenGL.Text;
 
 namespace Lab2;
 
 public class GameField : UpdateableObject
 {
     private const int ArraySize = 9;
-    private const float TileSize = 0.3f;
+    private const float TileSize = 0.25f;
 
     private readonly List<Color> _colors =
     [
@@ -23,9 +24,14 @@ public class GameField : UpdateableObject
 
     private World _world;
 
-    private Vector3 _fieldPosition = new Vector3(-ArraySize * TileSize / 2, ArraySize * TileSize / 2, 0);
+    private Vector3 _fieldPosition = new(-ArraySize * TileSize / 2, ArraySize * TileSize / 2, 0);
 
     private readonly Tile[,] _tiles;
+
+    private const string ScoreText = "Score: ";
+    private int _score;
+    private readonly TextObject _scoreObject;
+
     private Random _random;
 
     private GameState _state = GameState.SelectBall;
@@ -34,7 +40,7 @@ public class GameField : UpdateableObject
     private Circle? _movingBall;
     private List<Vector3> _animationFrames;
 
-    private int _ballsCount = 0;
+    private int _ballsCount;
 
     public GameField(World world)
     {
@@ -59,6 +65,9 @@ public class GameField : UpdateableObject
                 _world.AddObject(tile);
             }
         }
+
+        _scoreObject = new TextObject(new Vector3(1.2f, 0.95f, 0), Score(), 0.3f, Color.Black);
+        _world.AddObject(_scoreObject);
 
         GenerateBalls();
     }
@@ -87,10 +96,7 @@ public class GameField : UpdateableObject
     {
         for (int i = 0; i < 3; i++)
         {
-            if (_ballsCount == ArraySize * ArraySize)
-            {
-                return;
-            }
+            if (_ballsCount == ArraySize * ArraySize) return;
 
             Tile tile = null;
             int x = 0, y = 0;
@@ -98,18 +104,17 @@ public class GameField : UpdateableObject
             while (tile is null || tile.Circle != null)
             {
                 int position = _random.Next(ArraySize * ArraySize);
-
                 x = position / ArraySize;
                 y = position % ArraySize;
                 tile = _tiles[x, y];
             }
 
             Circle circle = CreateCircle(x, y);
-
             tile.PlaceCircle(circle);
             _world.AddObject(circle);
-
             _ballsCount++;
+
+            CheckBalls(x, y);
         }
     }
 
@@ -124,13 +129,19 @@ public class GameField : UpdateableObject
                 return;
             }
 
+            tile.SetActive(true);
             _selectedTilePos = new Vector2D<int>(x, y);
             _state = GameState.BallSelected;
         }
         else if (_state == GameState.BallSelected)
         {
+            Tile selectedTile = SelectedTile;
             if (tile.Circle != null)
             {
+                _selectedTilePos = new Vector2D<int>(x, y);
+                selectedTile.SetActive(false);
+                tile.SetActive(true);
+
                 return;
             }
 
@@ -141,20 +152,12 @@ public class GameField : UpdateableObject
                 return;
             }
 
-            Tile selectedTile = GetTile(_selectedTilePos!.Value);
-
             _movingBall = selectedTile.RemoveCircle();
             _animationFrames = GetAnimationFrames(path);
-
+            selectedTile.SetActive(false);
             _selectedTilePos = new Vector2D<int>(x, y);
 
             _state = GameState.BallMoving;
-        }
-        else if (_state == GameState.BallMoving)
-        {
-        }
-        else if (_state == GameState.BallMoved)
-        {
         }
     }
 
@@ -164,14 +167,15 @@ public class GameField : UpdateableObject
 
         tile.PlaceCircle(_movingBall!);
 
-
+        SelectedTile.SetActive(false);
         _selectedTilePos = null;
 
-        CheckBalls(x, y);
+        if (!CheckBalls(x, y))
+        {
+            GenerateBalls();
+        }
 
         _state = GameState.SelectBall;
-
-        GenerateBalls();
     }
 
     private List<Vector2D<int>>? IsPathAvailable(int targetX, int targetY)
@@ -179,16 +183,12 @@ public class GameField : UpdateableObject
         Vector2D<int> start = _selectedTilePos!.Value;
         Vector2D<int> target = new Vector2D<int>(targetX, targetY);
 
-        // Очередь для обхода
         Queue<Vector2D<int>> queue = new Queue<Vector2D<int>>();
         queue.Enqueue(start);
 
-        // Словарь: Клетка -> Откуда мы в неё пришли
-        // Используем его и как список посещенных, и для восстановления пути
         Dictionary<Vector2D<int>, Vector2D<int>?> parentMap = new();
         parentMap[start] = null;
 
-        // Возможные направления движения
         Vector2D<int>[] directions =
         [
             new(0, 1), new(0, -1), new(1, 0), new(-1, 0)
@@ -207,10 +207,8 @@ public class GameField : UpdateableObject
             {
                 Vector2D<int> next = new Vector2D<int>(current.X + dir.X, current.Y + dir.Y);
 
-                // Проверка границ
                 if (next.X >= 0 && next.X < ArraySize && next.Y >= 0 && next.Y < ArraySize)
                 {
-                    // Если клетка пустая И мы там еще не были
                     if (GetTile(next.X, next.Y).Circle == null && !parentMap.ContainsKey(next))
                     {
                         parentMap[next] = current;
@@ -220,7 +218,7 @@ public class GameField : UpdateableObject
             }
         }
 
-        return null; // Путь не найден
+        return null;
     }
 
     private List<Vector2D<int>> ReconstructPath(Dictionary<Vector2D<int>, Vector2D<int>?> parentMap,
@@ -235,7 +233,7 @@ public class GameField : UpdateableObject
             current = parentMap[current.Value];
         }
 
-        path.Reverse(); // Путь шел от цели к старту, переворачиваем
+        path.Reverse();
         return path;
     }
 
@@ -271,6 +269,8 @@ public class GameField : UpdateableObject
         return _tiles[position.X, position.Y];
     }
 
+    private Tile SelectedTile => GetTile(_selectedTilePos!.Value);
+
     private Circle CreateCircle(int x, int y)
     {
         Vector3 position = _fieldPosition + new Vector3(x * TileSize, -y * TileSize, 0);
@@ -280,84 +280,78 @@ public class GameField : UpdateableObject
             Program.BallTextureName);
     }
 
-    private void CheckBalls(int x, int y)
+    private bool CheckBalls(int x, int y)
     {
-        for (int dy = Math.Max(0, y - 4); dy < Math.Min(y + 4, ArraySize); dy++)
-        {
-            int combo = GetComboBallsCount(x, dy, true);
-            if (combo > 0)
-            {
-                DeleteBalls(x, dy, combo, true);
+        Tile startTile = GetTile(x, y);
+        if (startTile.Circle == null) return false;
 
-                return;
+        Color targetColor = startTile.BallColor!.Value;
+        HashSet<Vector2D<int>> ballsToDelete = new();
+
+        Vector2D<int>[] directions =
+        {
+            new(1, 0), new(0, 1)
+        };
+
+        foreach (var dir in directions)
+        {
+            List<Vector2D<int>> line = new() { new(x, y) };
+
+            line.AddRange(GetLineInDirection(x, y, dir.X, dir.Y, targetColor));
+            line.AddRange(GetLineInDirection(x, y, -dir.X, -dir.Y, targetColor));
+
+            if (line.Count >= 5)
+            {
+                foreach (var pos in line) ballsToDelete.Add(pos);
             }
         }
 
-        for (int dx = Math.Max(0, x - 4); dx < Math.Min(x + 4, ArraySize); dx++)
+        if (ballsToDelete.Count > 0)
         {
-            int combo = GetComboBallsCount(dx, y, false);
-            if (combo > 0)
+            int count = ballsToDelete.Count;
+            foreach (var pos in ballsToDelete)
             {
-                DeleteBalls(dx, y, combo, false);
-
-                return;
+                DeleteBallAt(pos.X, pos.Y);
             }
+
+            _score += 10 + (count - 5) * 5;
+            _scoreObject.Text = Score();
+            return true;
         }
+
+        return false;
     }
 
-    private int GetComboBallsCount(int x, int y, bool isVertical)
+    private List<Vector2D<int>> GetLineInDirection(int startX, int startY, int dx, int dy, Color color)
     {
-        int count = 1;
+        List<Vector2D<int>> line = new();
+        int cx = startX + dx;
+        int cy = startY + dy;
 
-        Color? color = GetTile(x, y).BallColor;
-
-        if (color == null)
+        while (cx >= 0 && cx < ArraySize && cy >= 0 && cy < ArraySize)
         {
-            return 0;
-        }
-
-        int i = 1;
-
-        while (true)
-        {
-            int cx = isVertical ? x : x + i;
-            int cy = isVertical ? y + i : y;
-
-            i++;
-
-            if (cx >= ArraySize || cy >= ArraySize)
-            {
-                return count >= 5 ? count : 0;
-            }
-
             if (GetTile(cx, cy).BallColor == color)
             {
-                count++;
-                continue;
+                line.Add(new Vector2D<int>(cx, cy));
+                cx += dx;
+                cy += dy;
             }
-
-            return count >= 5 ? count : 0;
+            else break;
         }
+
+        return line;
     }
 
-    private void DeleteBalls(int x, int y, int count, bool isVertical)
+    private void DeleteBallAt(int x, int y)
     {
-        for (int i = 0; i < count; i++)
+        Tile tile = GetTile(x, y);
+        if (tile.Circle != null)
         {
-            int cx = isVertical ? x : x + i;
-            int cy = isVertical ? y + i : y;
-
-            Tile tile = GetTile(cx, cy);
-
-            Circle? circle = tile.Circle;
-
-            if (circle != null)
-            {
-                _world.RemoveObject(circle);
-
-                tile.RemoveCircle();
-                _ballsCount--;
-            }
+            _world.RemoveObject(tile.Circle);
+            tile.RemoveCircle();
+            _ballsCount--;
         }
     }
+
+    private string Score() => $"{ScoreText}{_score}";
 }

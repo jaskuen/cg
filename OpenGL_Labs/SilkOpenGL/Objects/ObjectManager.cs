@@ -1,5 +1,6 @@
 ﻿using Silk.NET.OpenGL;
 using SilkOpenGL.Store;
+using SilkOpenGL.Text;
 
 namespace SilkOpenGL.Objects;
 
@@ -11,14 +12,16 @@ public class ObjectManager
 
     private readonly ShaderStore _shaderStore;
     private readonly TextureStore _textureStore;
+    private readonly FontStore _fontStore;
 
     // Для оптимизации: группировка по шейдерам (опционально, добавь позже)
     private Dictionary<string, List<RenderableObject>> _objectsByShader = new();
 
-    public ObjectManager(ShaderStore shaderStore, TextureStore textureStore)
+    public ObjectManager(ShaderStore shaderStore, TextureStore textureStore, FontStore fontStore)
     {
         _shaderStore = shaderStore;
         _textureStore = textureStore;
+        _fontStore = fontStore;
     }
 
     public void Add(RenderableObject obj)
@@ -60,7 +63,7 @@ public class ObjectManager
             }
         }
     }
-    
+
     public List<RenderableObject> Objects => _objects;
 
     private void ProcessPending(GL gl)
@@ -68,6 +71,12 @@ public class ObjectManager
         foreach (var obj in _toAdd)
         {
             obj.Init(_shaderStore, _textureStore, gl); // Инициализация ресурсов
+
+            if (obj is IText textObj)
+            {
+                textObj.SetMetadata(_fontStore);
+            }
+            
             _objects.Add(obj);
 
             // Если используешь группировку:

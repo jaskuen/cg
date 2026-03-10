@@ -32,7 +32,6 @@ public class Circle : RenderableObject
         _ebo = new BufferObject<uint>(_gl, _indices, BufferTargetARB.ElementArrayBuffer);
         _vao = new VertexArrayObject<float, uint>(_gl, _vbo, _ebo);
 
-        // Атрибут 0: позиция (2 floats)
         _vao.VertexAttributePointer(0, 2, VertexAttribPointerType.Float, 4, 0);
         _vao.VertexAttributePointer(1, 2, VertexAttribPointerType.Float, 4, 2);
 
@@ -49,21 +48,18 @@ public class Circle : RenderableObject
     {
         unsafe
         {
-            // Устанавливаем uniforms
             _shader.Use();
 
-            _shader.SetUniform("uModel", _transform.ViewMatrix);
+            _shader.SetUniform("uModel", _transform.ModelMatrix);
             _shader.SetUniform("uColor", _color);
 
             if (_texture != null)
             {
                 _texture.Bind();
 
-                //Setting a uniform.
                 _shader.SetUniform("uTexture", 0);
             }
 
-            // Рисуем квад
             _vao.Bind();
             _gl.DrawElements(PrimitiveType.Triangles, (uint)_indices.Length, DrawElementsType.UnsignedInt, null);
         }

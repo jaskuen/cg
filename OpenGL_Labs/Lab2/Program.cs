@@ -33,8 +33,6 @@ class Program
 
         var world = new World(options, shaderStore, textureStore, fontStore);
 
-        // Создаём и добавляем несколько кубов
-
         GameField gameField = new GameField(world);
         world.AddObject(gameField);
 

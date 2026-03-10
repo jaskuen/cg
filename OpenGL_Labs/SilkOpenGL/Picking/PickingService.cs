@@ -34,7 +34,6 @@ public class PickingService
         _fbo = _gl.GenFramebuffer();
         _gl.BindFramebuffer(FramebufferTarget.Framebuffer, _fbo);
 
-        // Текстура для ID
         _colorTexture = _gl.GenTexture();
         _gl.BindTexture(TextureTarget.Texture2D, _colorTexture);
         _gl.TexImage2D(TextureTarget.Texture2D, 0, InternalFormat.Rgba, (uint)_width, (uint)_height, 0,
@@ -42,7 +41,6 @@ public class PickingService
         _gl.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0,
             TextureTarget.Texture2D, _colorTexture, 0);
 
-        // Буфер глубины (Renderbuffer лучше подходит для технических нужд, чем текстура)
         _depthRenderBuffer = _gl.GenRenderbuffer();
         _gl.BindRenderbuffer(RenderbufferTarget.Renderbuffer, _depthRenderBuffer);
         _gl.RenderbufferStorage(RenderbufferTarget.Renderbuffer, InternalFormat.DepthComponent24, (uint)_width,
@@ -64,7 +62,6 @@ public class PickingService
     {
         _gl.BindFramebuffer(FramebufferTarget.ReadFramebuffer, _fbo);
 
-        // В OpenGL (0,0) внизу. Инвертируем Y координаты мыши окна
         int flippedY = _height - y;
 
         byte[] pixel = new byte[4];
@@ -78,7 +75,6 @@ public class PickingService
 
         _gl.BindFramebuffer(FramebufferTarget.ReadFramebuffer, 0);
 
-        // Декодируем ID из RGB
         return (uint)(pixel[0] | (pixel[1] << 8) | (pixel[2] << 16));
     }
 
@@ -93,7 +89,6 @@ public class PickingService
 
     public Vector3 IdToColor(uint id)
     {
-        // Преобразуем 24-битный ID в нормализованный RGB для шейдера
         return new Vector3(
             (id & 0xFF) / 255.0f,
             ((id >> 8) & 0xFF) / 255.0f,

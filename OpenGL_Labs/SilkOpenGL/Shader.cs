@@ -16,7 +16,6 @@ public class Shader : IDisposable
 
     public uint ProgramId => _handle;
 
-    // Конструктор теперь только запоминает пути
     public Shader(string vertexPath, string fragmentPath)
     {
         _vertexPath = vertexPath ?? throw new ArgumentNullException(nameof(vertexPath));
@@ -24,7 +23,7 @@ public class Shader : IDisposable
         _isCompiled = false;
     }
 
-    // Метод, который выполняет тяжёлую работу (вызывать только после OnLoad)
+    // Вызывается в момент запуска GL
     public void Compile(GL gl)
     {
         if (_isCompiled) return;

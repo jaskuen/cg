@@ -46,20 +46,17 @@ public class ObjectManager
 
     public void Render(GL gl, double dt)
     {
-        // Вариант 1: Простой foreach
-        // foreach (var obj in _objects) obj.OnRender(gl, dt);
-
-        // Вариант 2: Оптимизированный по шейдерам (группировка)
-        var groups = _objects.GroupBy(obj => obj.ShaderKey); // Или используй _objectsByShader
+        // Группировка по шейдерам
+        var groups = _objects.GroupBy(obj => obj.ShaderKey);
         foreach (var group in groups)
         {
             Shader shader = _shaderStore.GetShader(group.Key);
-            shader.Use(); // Переключаем шейдер один раз на группу
+            shader.Use();
 
             foreach (var obj in group)
             {
-                obj.BindResources(); // Bind текстуры, uniforms
-                obj.OnRender(dt); // Только draw call
+                obj.BindResources();
+                obj.OnRender(dt);
             }
         }
     }

@@ -43,7 +43,6 @@ public class Tile : RenderableObject, IClickable
         _vbo = new BufferObject<float>(_gl, _vertices, BufferTargetARB.ArrayBuffer);
         _vao = new VertexArrayObject<float, uint>(_gl, _vbo, _ebo);
 
-        //Telling the VAO object how to lay out the attribute pointers
         _vao.VertexAttributePointer(0, 2, VertexAttribPointerType.Float, 4, 0);
         _vao.VertexAttributePointer(1, 2, VertexAttribPointerType.Float, 4, 2);
     }
@@ -54,12 +53,10 @@ public class Tile : RenderableObject, IClickable
 
     public override unsafe void OnRender(double delta)
     {
-        //Binding and using our VAO and shader.
         _vao.Bind();
         _shader.Use();
 
-        // Передача матрицы модели
-        _shader.SetUniform("uModel", _transform.ViewMatrix);
+        _shader.SetUniform("uModel", _transform.ModelMatrix);
 
         _shader.SetUniform("uColor", _hovered
             ? Color.Crimson
@@ -71,7 +68,6 @@ public class Tile : RenderableObject, IClickable
         {
             _texture.Bind();
 
-            //Setting a uniform.
             _shader.SetUniform("uTexture", 0);
         }
 

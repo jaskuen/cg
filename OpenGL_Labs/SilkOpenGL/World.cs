@@ -53,13 +53,11 @@ public class World
         CompileShadersAndTextures();
 
         AddCameraMove();
-
-        // Инициализация глобальных ресурсов, если нужно
     }
 
     private void OnUpdate(double dt)
     {
-        _objectManager.Update(_gl, dt); // Обновляет все объекты
+        _objectManager.Update(_gl, dt);
     }
 
     private unsafe void OnRender(double dt)
@@ -80,7 +78,7 @@ public class World
             _gl.UniformMatrix4(projLoc, 1, false, (float*)&proj);
         }
 
-        _objectManager.Render(_gl, dt); // Рисует все объекты
+        _objectManager.Render(_gl, dt);
     }
 
     private void OnFramebufferResize(Vector2D<int> size)
@@ -94,7 +92,6 @@ public class World
         _objectManager.DisposeAll();
         _shaderStore.Dispose();
         _textureStore.Dispose();
-        // Очистка GL
     }
 
     private void CompileShadersAndTextures()
@@ -117,7 +114,7 @@ public class World
         var mouse = inputContext.Mice.First();
         var keyboard = inputContext.Keyboards.First();
 
-        // mouse.Cursor.CursorMode = CursorMode.Raw; // для FPS-стиля
+        // mouse.Cursor.CursorMode = CursorMode.Raw;
         // mouse.MouseMove += (_, delta) => _camera.ProcessMouseMove(mouse, delta);
         mouse.MouseUp += (_, _) => PerformMouseAction(mouse, MouseAction.Up);
         mouse.MouseDown += (_, _) => PerformMouseAction(mouse, MouseAction.Down);
@@ -169,12 +166,10 @@ public class World
                     target.OnMouseEnter();
                 }
 
-                // ПРЕОБРАЗОВАНИЕ: Получаем мировую координату на глубине объекта
-                // Предположим, что у объекта есть доступ к его Transform или Position
+                // Получаем мировые координаты объекта
                 float objectZ = (target as RenderableObject)?.Position.Z ?? 0;
                 Vector3 worldPos = _camera.Unproject(mousePos, new Vector2(_window.Size.X, _window.Size.Y), objectZ);
-
-                // Теперь передаем в объект ЧИСТЫЙ Vector3 мировых координат
+                
                 switch (action)
                 {
                     case MouseAction.Up: target.OnMouseUp(worldPos); break;

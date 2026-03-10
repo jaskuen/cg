@@ -145,13 +145,19 @@ public class TextObject : RenderableObject, IText
         _shader.Use();
         _texture!.Bind();
 
-        _shader.SetUniform("uModel", _transform.ViewMatrix);
+        _shader.SetUniform("uModel", _transform.ModelMatrix);
         _shader.SetUniform("uTexture", 0);
         _shader.SetUniform("uTextColor", _color);
 
+        BindResources();
+        _gl.DrawElements(PrimitiveType.Triangles, (uint)_indices.Length, DrawElementsType.UnsignedInt, null);
+    }
+
+    public override void BindResources()
+    {
         _vao.Bind();
         _ebo.Bind();
-        _gl.DrawElements(PrimitiveType.Triangles, (uint)_indices.Length, DrawElementsType.UnsignedInt, null);
+        _vbo.Bind();
     }
 
     public override void OnUpdate(double dt)

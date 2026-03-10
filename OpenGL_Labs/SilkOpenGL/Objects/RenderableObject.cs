@@ -60,7 +60,6 @@ public abstract class RenderableObject : UpdateableObject, IDisposable
 
     public virtual void OnClose()
     {
-        /* Dispose VBO, etc. */
     }
 
     public void Dispose()
@@ -71,7 +70,7 @@ public abstract class RenderableObject : UpdateableObject, IDisposable
     {
         _vao.Bind();
         pickingShader.Use();
-        pickingShader.SetUniform("uModel", _transform.ViewMatrix);
+        pickingShader.SetUniform("uModel", _transform.ModelMatrix);
 
         gl.DrawElements(PrimitiveType.Triangles, (uint)_indices.Length, DrawElementsType.UnsignedInt, null);
     }

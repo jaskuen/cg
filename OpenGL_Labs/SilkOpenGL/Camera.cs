@@ -44,11 +44,11 @@ public class Camera
 
     public Vector3 Unproject(Vector2 mousePos, Vector2 windowSize, float targetZ)
     {
-        // 1. Переводим в NDC (-1 to 1)
+        // 1. (-1 to 1)
         float x = (2.0f * mousePos.X) / windowSize.X - 1.0f;
         float y = 1.0f - (2.0f * mousePos.Y) / windowSize.Y;
 
-        // 2. Создаем матрицы
+        // 2. Матрицы
         var view = ViewMatrix;
         var projection = ProjectionMatrix(windowSize.X / windowSize.Y);
 
@@ -81,7 +81,6 @@ public class Camera
         _yaw += delta.X * _mouseSensitivity;
         _pitch -= delta.Y * _mouseSensitivity;
 
-        //We don't want to be able to look behind us by going over our head or under our feet so make sure it stays within these bounds
         _pitch = Math.Clamp(_pitch, -89f, 89f);
 
         var cameraDirection = Vector3.Zero;

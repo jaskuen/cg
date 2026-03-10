@@ -191,7 +191,7 @@ public class World
     {
         // 1. Очищаем FBO для пикинга
         _pickingService.BindForRendering();
-        _gl.ClearColor(0, 0, 0, 0); // ID 0 — это "пустота"
+        _gl.ClearColor(0, 0, 0, 0);
         _gl.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
         var pickingShader = _shaderStore.GetShader("picking");

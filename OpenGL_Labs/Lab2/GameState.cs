@@ -6,4 +6,6 @@ public enum GameState
     BallSelected,
     BallMoving,
     BallMoved,
+    FinishGame,
+    GameOver,
 }

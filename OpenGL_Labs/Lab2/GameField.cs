@@ -32,6 +32,8 @@ public class GameField : UpdateableObject
     private int _score;
     private readonly TextObject _scoreObject;
 
+    private TextObject _gameOverObject;
+
     private Random _random;
 
     private GameState _state = GameState.SelectBall;
@@ -88,7 +90,29 @@ public class GameField : UpdateableObject
 
         if (_state == GameState.BallMoved)
         {
-            AnimationFinished(_selectedTilePos!.Value.X, _selectedTilePos!.Value.Y);
+            AnimationFinished();
+        }
+
+        if (_state == GameState.FinishGame)
+        {
+            foreach (Tile tile in _tiles)
+            {
+                if (tile.Circle != null)
+                {
+                    _world.RemoveObject(tile.Circle);
+                }
+
+                _world.RemoveObject(tile);
+            }
+
+            _world.RemoveObject(_scoreObject);
+
+            string gameOverText = $"Game over! Your score: {_score}";
+            _gameOverObject = new TextObject(new Vector3(-2f, 0f, 0f), gameOverText, 0.3f, Color.Black);
+
+            _world.AddObject(_gameOverObject);
+
+            _state = GameState.GameOver;
         }
     }
 
@@ -96,7 +120,7 @@ public class GameField : UpdateableObject
     {
         for (int i = 0; i < 3; i++)
         {
-            if (_ballsCount == ArraySize * ArraySize) return;
+            if (_ballsCount == ArraySize * ArraySize) break;
 
             Tile tile = null;
             int x = 0, y = 0;
@@ -116,6 +140,14 @@ public class GameField : UpdateableObject
 
             CheckBalls(x, y);
         }
+
+        if (_ballsCount == ArraySize * ArraySize)
+        {
+            _state = GameState.FinishGame;
+            return;
+        }
+
+        _state = GameState.SelectBall;
     }
 
     private void OnTileClick(int x, int y)
@@ -161,8 +193,11 @@ public class GameField : UpdateableObject
         }
     }
 
-    private void AnimationFinished(int x, int y)
+    private void AnimationFinished()
     {
+        int x = _selectedTilePos!.Value.X;
+        int y = _selectedTilePos!.Value.Y;
+
         Tile tile = GetTile(x, y);
 
         tile.PlaceCircle(_movingBall!);
@@ -174,8 +209,10 @@ public class GameField : UpdateableObject
         {
             GenerateBalls();
         }
-
-        _state = GameState.SelectBall;
+        else
+        {
+            _state = GameState.SelectBall;
+        }
     }
 
     private List<Vector2D<int>>? IsPathAvailable(int targetX, int targetY)

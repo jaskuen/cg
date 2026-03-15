@@ -32,6 +32,7 @@ public class ObjectManager
     public void Remove(RenderableObject obj)
     {
         _toRemove.Add(obj);
+        _objects.Remove(obj);
     }
 
     public void Update(GL gl, double dt)
@@ -59,12 +60,13 @@ public class ObjectManager
             foreach (var obj in group)
             {
                 obj.BindResources(); // Bind текстуры, uniforms
-                obj.OnRender(dt); // Только draw call
+                obj.Render(dt); // Только draw call
             }
         }
     }
 
     public List<RenderableObject> Objects => _objects;
+    public List<RenderableObject> ObjectsToAdd => _toAdd;
 
     private void ProcessPending(GL gl)
     {
@@ -89,7 +91,6 @@ public class ObjectManager
         foreach (var obj in _toRemove)
         {
             obj.OnClose(); // Очистка ресурсов
-            _objects.Remove(obj);
             // _objectsByShader[obj.ShaderKey]?.Remove(obj);
         }
 

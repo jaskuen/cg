@@ -27,15 +27,26 @@ public abstract class RenderableObject : UpdateableObject, IDisposable
 
     public Vector3 Position => _transform.Position;
 
-    public RenderableObject(string shaderKey)
+    private RenderableObject()
+    {
+        _transform = new Transform();
+    }
+
+    public RenderableObject(string shaderKey) : this()
     {
         ShaderKey = shaderKey;
     }
 
-    public RenderableObject(string shaderKey, string textureKey)
+    public RenderableObject(string shaderKey, string textureKey) : this(shaderKey)
     {
-        ShaderKey = shaderKey;
         TextureKey = textureKey;
+    }
+
+    public void Render(double dt)
+    {
+        OnRender(dt);
+
+        _gl.BindVertexArray(0);
     }
 
     public abstract void OnRender(double dt);
@@ -55,23 +66,52 @@ public abstract class RenderableObject : UpdateableObject, IDisposable
 
     public virtual void BindResources()
     {
-        /* Bind texture, set uniforms */
+    }
+
+    public Vector3[] GetWorldVertices(int verticesCount)
+    {
+        int vertexCount = _vertices.Length / verticesCount;
+        Vector3[] worldPoints = new Vector3[vertexCount];
+
+        for (int i = 0; i < vertexCount; i++)
+        {
+            Vector3 localPos = new Vector3(
+                _vertices[i * 3],
+                _vertices[i * 3 + 1],
+                _vertices[i * 3 + 2]
+            );
+
+            worldPoints[i] = Vector3.Transform(localPos, _transform.ModelMatrix);
+        }
+
+        return worldPoints;
     }
 
     public virtual void OnClose()
     {
-        /* Dispose VBO, etc. */
+        _gl?.BindVertexArray(0);
+        _gl?.BindBuffer(BufferTargetARB.ArrayBuffer, 0);
+        _gl?.BindBuffer(BufferTargetARB.ElementArrayBuffer, 0);
+
+        _vbo?.Dispose();
+        _ebo?.Dispose();
+        _vao?.Dispose();
+
+        _vbo = null;
+        _ebo = null;
+        _vao = null;
     }
 
     public void Dispose()
     {
+        OnClose();
     }
 
     public virtual unsafe void OnRenderPicking(GL gl, Shader pickingShader)
     {
         _vao.Bind();
         pickingShader.Use();
-        pickingShader.SetUniform("uModel", _transform.ViewMatrix);
+        pickingShader.SetUniform("uModel", _transform.ModelMatrix);
 
         gl.DrawElements(PrimitiveType.Triangles, (uint)_indices.Length, DrawElementsType.UnsignedInt, null);
     }

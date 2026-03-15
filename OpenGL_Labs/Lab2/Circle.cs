@@ -52,7 +52,7 @@ public class Circle : RenderableObject
             // Устанавливаем uniforms
             _shader.Use();
 
-            _shader.SetUniform("uModel", _transform.ViewMatrix);
+            _shader.SetUniform("uModel", _transform.ModelMatrix);
             _shader.SetUniform("uColor", _color);
 
             if (_texture != null)

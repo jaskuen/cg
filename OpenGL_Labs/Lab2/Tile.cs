@@ -59,7 +59,7 @@ public class Tile : RenderableObject, IClickable
         _shader.Use();
 
         // Передача матрицы модели
-        _shader.SetUniform("uModel", _transform.ViewMatrix);
+        _shader.SetUniform("uModel", _transform.ModelMatrix);
 
         _shader.SetUniform("uColor", _hovered
             ? Color.Crimson

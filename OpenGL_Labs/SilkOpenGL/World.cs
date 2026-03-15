@@ -21,6 +21,11 @@ public class World
     private Camera _camera;
     private PickingService _pickingService;
 
+    private IMouse? _mouse;
+    private IKeyboard? _keyboard;
+
+    private readonly List<IKeyboardClickable> _keyboardClickables = [];
+
     private IClickable? _lastActive;
 
     public World(WindowOptions windowOptions, ShaderStore shaderStore, TextureStore textureStore, FontStore fontStore)
@@ -40,6 +45,11 @@ public class World
         _window.Closing += OnUnload;
     }
 
+    public World(WindowOptions windowOptions, StoreManager storeManager) : this(windowOptions, storeManager.ShaderStore,
+        storeManager.TextureStore, storeManager.FontStore)
+    {
+    }
+
     private void OnLoad()
     {
         _gl = _window.CreateOpenGL();
@@ -52,7 +62,7 @@ public class World
         RegisterShaders();
         CompileShadersAndTextures();
 
-        AddCameraMove();
+        AddInputContext();
 
         // Инициализация глобальных ресурсов, если нужно
     }
@@ -110,22 +120,35 @@ public class World
         }
     }
 
-    private void AddCameraMove()
+    private void AddInputContext()
     {
         IInputContext inputContext = _window.CreateInput();
 
         var mouse = inputContext.Mice.First();
+        _mouse = mouse;
+
         var keyboard = inputContext.Keyboards.First();
+        _keyboard = keyboard;
+
+        RegisterInputObjects();
 
         // mouse.Cursor.CursorMode = CursorMode.Raw; // для FPS-стиля
         // mouse.MouseMove += (_, delta) => _camera.ProcessMouseMove(mouse, delta);
         mouse.MouseUp += (_, _) => PerformMouseAction(mouse, MouseAction.Up);
         mouse.MouseDown += (_, _) => PerformMouseAction(mouse, MouseAction.Down);
         mouse.MouseMove += (_, _) => PerformMouseAction(mouse, MouseAction.Move);
-        
+
         // mouse.MouseMove += (_, delta) => Console.WriteLine(delta);
 
-        _window.Update += dt => _camera.ProcessKeyboard(keyboard, dt);
+        // _window.Update += dt => _camera.ProcessKeyboard(keyboard, dt);
+    }
+
+    private void RegisterInputObjects()
+    {
+        foreach (IKeyboardClickable keyboardClickable in _keyboardClickables)
+        {
+            keyboardClickable.Keyboard = _keyboard!;
+        }
     }
 
     private void RegisterShaders()
@@ -139,11 +162,6 @@ public class World
     private uint PerformMouseAction(IMouse mouse, MouseAction action)
     {
         Vector2 mousePos = mouse.Position;
-
-        Vector2 clickedPosition =
-            CoordinateHelper.FromViewportToNdc(mousePos, new Vector2(_window.Size.X, _window.Size.Y));
-
-        // Console.WriteLine($"{clickedPosition.X}, {clickedPosition.Y}");
 
         DrawPickingTextures();
 
@@ -237,6 +255,18 @@ public class World
         if (obj is IClickable clickable)
         {
             _pickingService.Register(clickable);
+        }
+
+        if (obj is IKeyboardClickable keyboardClickable)
+        {
+            if (_keyboard is null)
+            {
+                _keyboardClickables.Add(keyboardClickable);
+            }
+            else
+            {
+                keyboardClickable.Keyboard = _keyboard;
+            }
         }
     }
 

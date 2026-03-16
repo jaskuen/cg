@@ -1,9 +1,9 @@
 ﻿#version 330 core
-in vec2 vPos;              // от -1 до 1 внутри квадрата
+in vec2 vPos;
 in vec2 frag_txCoord;
 
 uniform sampler2D uTexture;
-uniform vec4 uColor;  // цвет круга
+uniform vec4 uColor;
 
 out vec4 FragColor;
 

@@ -2,7 +2,7 @@
 in vec2 frag_txCoord;
 
 uniform sampler2D uTexture;
-uniform vec4 uColor;  // цвет круга
+uniform vec4 uColor;
 
 out vec4 out_color;
 

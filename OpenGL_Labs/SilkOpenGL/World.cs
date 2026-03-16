@@ -28,6 +28,8 @@ public class World
 
     private IClickable? _lastActive;
 
+    private bool _useMouseCameraMove = false;
+
     public World(WindowOptions windowOptions, ShaderStore shaderStore, TextureStore textureStore, FontStore fontStore)
     {
         _shaderStore = shaderStore;
@@ -62,7 +64,6 @@ public class World
         RegisterShaders();
         CompileShadersAndTextures();
 
-        AddCameraMove();
         AddInputContext();
 
         // Инициализация глобальных ресурсов, если нужно
@@ -132,8 +133,12 @@ public class World
 
         RegisterInputObjects();
 
-        // mouse.Cursor.CursorMode = CursorMode.Raw;
-        // mouse.MouseMove += (_, delta) => _camera.ProcessMouseMove(mouse, delta);
+        if (_useMouseCameraMove)
+        {
+            mouse.Cursor.CursorMode = CursorMode.Raw;
+            mouse.MouseMove += (_, delta) => _camera.ProcessMouseMove(mouse, delta);
+        }
+
         mouse.MouseUp += (_, _) => PerformMouseAction(mouse, MouseAction.Up);
         mouse.MouseDown += (_, _) => PerformMouseAction(mouse, MouseAction.Down);
         mouse.MouseMove += (_, _) => PerformMouseAction(mouse, MouseAction.Move);
@@ -163,8 +168,15 @@ public class World
     {
         Vector2 mousePos = mouse.Position;
 
-        DrawPickingTextures();
+        if (_useMouseCameraMove)
+        {
+            mousePos = new Vector2((float)_window.Size.X / 2, (float)_window.Size.Y / 2);
+        }
 
+        // Console.WriteLine($"{clickedPosition.X}, {clickedPosition.Y}");
+
+        DrawPickingTextures();
+        
         uint clickedId = _pickingService.ReadIdAt((int)mousePos.X, (int)mousePos.Y);
 
         if (clickedId != 0)
@@ -190,7 +202,7 @@ public class World
                 // Получаем мировые координаты объекта
                 float objectZ = (target as RenderableObject)?.Position.Z ?? 0;
                 Vector3 worldPos = _camera.Unproject(mousePos, new Vector2(_window.Size.X, _window.Size.Y), objectZ);
-                
+
                 switch (action)
                 {
                     case MouseAction.Up: target.OnMouseUp(worldPos); break;

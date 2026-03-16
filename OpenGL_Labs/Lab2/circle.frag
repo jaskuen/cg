@@ -1,16 +1,14 @@
 ﻿#version 330 core
-in vec2 vPos;              // от -1 до 1 внутри квадрата
+in vec2 vPos;
 
-uniform vec4 uColor;  // цвет круга
+uniform vec4 uColor;
 
 out vec4 FragColor;
 
 void main()
 {
-    // Расстояние от центра квадрата
     float dist = length(vPos) * 4;
 
-    // Сглаживание с fwidth (resolution-independent AA)
     float width = fwidth(dist) * 1.5;                  // ширина пикселя в единицах расстояния
     float aaEdge = smoothstep(1.0 - width, 1.0 + width, dist);
 

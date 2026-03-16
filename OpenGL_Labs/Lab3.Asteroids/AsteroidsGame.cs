@@ -251,7 +251,7 @@ public class AsteroidsGame : UpdateableObject, IKeyboardClickable
 
     private void LoseLive()
     {
-        if (_lives > 0)
+        if (_lives > 1)
         {
             _player.Reset();
             _lives--;

@@ -7,7 +7,7 @@ public class Camera
 {
     private Vector2 _mousePosition = new(0, 0);
 
-    public Vector3 Position { get; set; } = new(0, 0, 3);
+    public Vector3 Position { get; set; } = new(0, 0, 2);
     public Vector3 Front { get; private set; } = new(0, 0, -1);
     public Vector3 Up { get; private set; } = Vector3.UnitY;
 

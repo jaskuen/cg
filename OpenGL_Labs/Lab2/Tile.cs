@@ -56,6 +56,7 @@ public class Tile : RenderableObject, IClickable
         _vao.Bind();
         _shader.Use();
 
+        // Передача матрицы модели
         _shader.SetUniform("uModel", _transform.ModelMatrix);
 
         _shader.SetUniform("uColor", _hovered

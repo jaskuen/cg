@@ -35,7 +35,7 @@ public class Circle : RenderableObject
         _vao.VertexAttributePointer(0, 2, VertexAttribPointerType.Float, 4, 0);
         _vao.VertexAttributePointer(1, 2, VertexAttribPointerType.Float, 4, 2);
 
-        _transform.Scale = _radius;
+        _transform.Scale = new Vector3(_radius, _radius, _radius);
         _transform.Position = _center;
     }
 

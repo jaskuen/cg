@@ -58,6 +58,7 @@ public class TextObject : RenderableObject, IText
         var indices = new List<uint>();
 
         float xCursor = 0;
+        float yCursor = 0;
 
         // 1. Вычисляем итоговый масштаб. 
         // Предположим, _fontMetadata.BaseSize — это поле 'size' или 'lineHeight' из XML (обычно 32, 64 или 72).
@@ -72,8 +73,19 @@ public class TextObject : RenderableObject, IText
             if (!_fontMetadata.Chars.TryGetValue(c, out var fc))
             {
                 // Пробел: используем xAdvance из метаданных, если есть, иначе половину fontSize
-                float advance = (c == ' ') ? (_fontMetadata.BaseSize * 0.25f) : 20f;
-                xCursor += advance * finalScale;
+                float advance = (c == ' ')
+                    ? (_fontMetadata.BaseSize * 0.25f)
+                    : 20f;
+                if (c == '\n')
+                {
+                    xCursor = 0;
+                    yCursor -= advance * finalScale * 5f;
+                }
+                else
+                {
+                    xCursor += advance * finalScale;
+                }
+
                 continue;
             }
 
@@ -87,7 +99,7 @@ public class TextObject : RenderableObject, IText
             // Теперь xPos и yPos будут в мировых единицах. 
             // Если _fontSize = 1.0f, то заглавная буква будет высотой примерно в 1 единицу сетки.
             float xPos = xCursor + (fc.XOffset * finalScale);
-            float yPos = -(fc.YOffset * finalScale);
+            float yPos = yCursor - (fc.YOffset * finalScale);
 
             float w = fc.Width * finalScale;
             float h = fc.Height * finalScale;

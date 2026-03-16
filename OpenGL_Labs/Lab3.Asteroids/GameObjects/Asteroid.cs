@@ -23,7 +23,7 @@ public class Asteroid : RenderableObject
     public Asteroid(Vector3 pos, int size, Random random) : base(Program.LineShaderName)
     {
         Size = size;
-        _transform.Scale = Radius;
+        _transform.Scale = new Vector3(Radius);
         _transform.Position = pos;
 
         _random = random;

@@ -22,7 +22,7 @@ public class Bullet : RenderableObject
         _direction = Vector3.Normalize(direction);
 
         _transform.Position = pos;
-        _transform.Scale = 0.015f;
+        _transform.Scale = new Vector3(0.015f);
         _transform.Rotation = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, MathHelper.DegreesToRadians(rotation));
     }
 
@@ -36,7 +36,7 @@ public class Bullet : RenderableObject
 
         _vao.VertexAttributePointer(0, 3, VertexAttribPointerType.Float, 3, 0);
 
-        _transform.Scale = Scale;
+        _transform.Scale = new Vector3(Scale);
     }
 
     public override void OnUpdate(double dt)

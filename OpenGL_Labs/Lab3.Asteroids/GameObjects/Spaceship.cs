@@ -48,7 +48,7 @@ public class Spaceship : RenderableObject, IKeyboardClickable
         _vao = new VertexArrayObject<float, uint>(_gl, _vbo, _ebo);
 
         _vao.VertexAttributePointer(0, 3, VertexAttribPointerType.Float, 3, 0);
-        _transform.Scale = Scale;
+        _transform.Scale = new Vector3(Scale);
         
         _gl.BindVertexArray(0);
     }
@@ -102,10 +102,8 @@ public class Spaceship : RenderableObject, IKeyboardClickable
         _respawnTime = DateTime.Now.AddSeconds(RespawnSeconds);
         _fragments.Clear();
 
-        // Получаем мировые координаты всех 5 вершин
         Vector3[] worldVerts = GetWorldVertices(3);
 
-        // Создаем обломки как пары вершин (линии)
         for (int i = 0; i < worldVerts.Length; i++)
         {
             Vector3 start = worldVerts[i];
@@ -154,20 +152,13 @@ public class Spaceship : RenderableObject, IKeyboardClickable
 
     private void RenderFragments()
     {
-        // Для каждого обломка строим свою матрицу трансформации
         foreach (var f in _fragments)
         {
             Matrix4x4 model = Matrix4x4.CreateScale(0.1f) * Matrix4x4.CreateRotationZ(f.Rotation) * Matrix4x4.CreateTranslation(f.Position);
             
             _shader.SetUniform("uModel", model);
             _shader.SetUniform("uColor", Color.White);
-
-            // Рисуем одну линию (используем сырые данные вершин обломка)
-            // Чтобы не плодить VAO для каждого осколка, используем DrawArrays с временным буфером 
-            // или просто рисуем текущий меш корабля с другой логикой (здесь для простоты рисуем через DrawArrays)
-            float[] line = { f.LocalStart.X, f.LocalStart.Y, 0, f.LocalEnd.X, f.LocalEnd.Y, 0 };
             
-            // В продакшене лучше иметь один VBO для линии и менять его позицию
             _vao.Bind(); 
             _gl.DrawArrays(PrimitiveType.Lines, 0, 2); 
         }
@@ -201,21 +192,17 @@ public class Spaceship : RenderableObject, IKeyboardClickable
         ];
     }
 
-    // Вспомогательный класс для обломка
+    // Обломок
     private class Debris
     {
         public Vector3 Position;
         public Vector3 Velocity;
         public float Rotation;
         public float RotationSpeed;
-        public Vector2 LocalStart;
-        public Vector2 LocalEnd;
 
         public Debris(Vector3 start, Vector3 end, Vector3 center, Random rnd)
         {
-            Position = (start + end) / 2f; // Центр линии
-            LocalStart = new Vector2(start.X - Position.X, start.Y - Position.Y);
-            LocalEnd = new Vector2(end.X - Position.X, end.Y - Position.Y);
+            Position = (start + end) / 2f;
             
             Vector3 dir = Vector3.Normalize(Position - center);
             Velocity = dir * (float)(rnd.NextDouble() * 0.5f + 0.2f);

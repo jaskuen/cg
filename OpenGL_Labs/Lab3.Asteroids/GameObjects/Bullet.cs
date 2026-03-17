@@ -55,11 +55,10 @@ public class Bullet : RenderableObject
 
     private void WrapAround()
     {
-        if (_transform.Position.X > 3.2f) _transform.Position = _transform.Position with { X = -3.2f };
-        else if (_transform.Position.X < -3.2f) _transform.Position = _transform.Position with { X = 3.2f };
-
-        if (_transform.Position.Y > 2f) _transform.Position = _transform.Position with { Y = -2f };
-        else if (_transform.Position.Y < -2f) _transform.Position = _transform.Position with { Y = 2f };
+        Vector3 pos = _transform.Position;
+        if (pos.X > 2f) pos.X = 2f; else if (pos.X < -2f) pos.X = 2f;
+        if (pos.Y > 1.3f) pos.Y = -1.3f; else if (pos.Y < -1.3f) pos.Y = 1.3f;
+        _transform.Position = pos;
     }
 
     public override unsafe void OnRender(double dt)

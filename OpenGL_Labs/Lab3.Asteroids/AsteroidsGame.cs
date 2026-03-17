@@ -34,7 +34,7 @@ public class AsteroidsGame : UpdateableObject, IKeyboardClickable
         CreatePlayer();
         for (int i = 0; i < 4; i++) SpawnAsteroid(3);
 
-        _gameText = new TextObject(new Vector3(-3f, 1.5f, 0f), GetText(), 0.15f, Color.Black);
+        _gameText = new TextObject(new Vector3(-2f, 1f, 0f), GetText(), 0.1f, Color.Black);
         _world.AddObject(_gameText);
     }
 
@@ -102,7 +102,7 @@ public class AsteroidsGame : UpdateableObject, IKeyboardClickable
         UpdateCollisions();
     }
 
-    public static bool ArePolygonsIntersecting(Vector3[] poly1, Vector3[] poly2)
+    private bool ArePolygonsIntersecting(Vector3[] poly1, Vector3[] poly2)
     {
         var polygons = new[] { poly1, poly2 };
 
@@ -144,6 +144,7 @@ public class AsteroidsGame : UpdateableObject, IKeyboardClickable
 
     private bool IsPointInPolygon(Vector3 point, Vector3[] polygon)
     {
+        // ray casting
         bool result = false;
         int j = polygon.Length - 1;
         for (int i = 0; i < polygon.Length; i++)
@@ -225,20 +226,20 @@ public class AsteroidsGame : UpdateableObject, IKeyboardClickable
 
         if (deltaX < 0)
         {
-            pos = pos with { X = -2.5f + deltaX };
+            pos = pos with { X = -1.7f + deltaX };
         }
         else
         {
-            pos = pos with { X = 2.5f + deltaX };
+            pos = pos with { X = 1.7f + deltaX };
         }
 
         if (deltaY < 0)
         {
-            pos = pos with { Y = -2.5f + deltaY };
+            pos = pos with { Y = -1.7f + deltaY };
         }
         else
         {
-            pos = pos with { Y = 2.5f + deltaY };
+            pos = pos with { Y = 1.7f + deltaY };
         }
 
         return pos;
@@ -272,7 +273,7 @@ public class AsteroidsGame : UpdateableObject, IKeyboardClickable
 
     private void GameOver()
     {
-         TextObject gameOver = new TextObject(new Vector3(-3f, 0f, 0f), $"Game over! Score: {_score}", 0.5f, Color.Orange);
+         TextObject gameOver = new TextObject(new Vector3(-2f, 0f, 0f), $"Game over! Score: {_score}", 0.35f, Color.Orange);
          _world.AddObject(gameOver);
     }
 

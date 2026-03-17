@@ -21,4 +21,8 @@
       </None>
     </ItemGroup>
 
+    <ItemGroup>
+      <PackageReference Include="Silk.NET.Windowing.Common" Version="2.23.0" />
+    </ItemGroup>
+
 </Project>

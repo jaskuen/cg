@@ -47,8 +47,7 @@ public class Asteroid : RenderableObject
     {
         _transform.Position += _velocity;
 
-        // Вращаем астероид вокруг оси Z для красоты
-        float currentRot = _transform.Rotation.Z + _spinSpeed * (float)dt;
+        float currentRot = _transform.Rotation.Z + _spinSpeed;
         _transform.Rotation = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, MathHelper.DegreesToRadians(currentRot));
 
         WrapAround();

@@ -32,7 +32,7 @@ public class AsteroidsGame : UpdateableObject, IKeyboardClickable
         _world = world;
         _random = new Random();
         CreatePlayer();
-        for (int i = 0; i < 4; i++) SpawnAsteroid(3); // Создаем 4 больших астероида
+        for (int i = 0; i < 4; i++) SpawnAsteroid(3);
 
         _gameText = new TextObject(new Vector3(-3f, 1.5f, 0f), GetText(), 0.15f, Color.Black);
         _world.AddObject(_gameText);
@@ -74,15 +74,13 @@ public class AsteroidsGame : UpdateableObject, IKeyboardClickable
             _canShoot = true;
         }
 
-        // 1. Проверяем, выстрелил ли игрок
         if (_isFiring)
         {
             var shootData = _player.GetShootingPoint();
             CreateBullet(shootData.position, shootData.direction, shootData.rotation);
-            _isFiring = false; // Сбрасываем флаг
+            _isFiring = false;
         }
 
-        // 2. Обработка смерти пуль
         List<Bullet> bulletsToDelete = [];
 
         for (int i = _bullets.Count - 1; i >= 0; i--)
@@ -101,7 +99,6 @@ public class AsteroidsGame : UpdateableObject, IKeyboardClickable
             bullet.Dispose();
         }
 
-        // 3. Коллизии и деление астероидов
         UpdateCollisions();
     }
 
@@ -113,17 +110,17 @@ public class AsteroidsGame : UpdateableObject, IKeyboardClickable
         {
             for (int i = 0; i < polygon.Length; i++)
             {
-                // Находим нормаль к текущей грани
+                // Нормаль к текущей грани
                 Vector3 p1 = polygon[i];
                 Vector3 p2 = polygon[(i + 1) % polygon.Length];
                 Vector3 edge = p2 - p1;
-                Vector3 axis = new Vector3(-edge.Y, edge.X, 0); // Перпендикуляр
+                Vector3 axis = new Vector3(-edge.Y, edge.X, 0);
 
-                // Проецируем оба многоугольника на эту ось
+                // Проекции полигонов
                 (float min1, float max1) = ProjectPolygon(poly1, axis);
                 (float min2, float max2) = ProjectPolygon(poly2, axis);
 
-                // Если нашли зазор — коллизии нет
+                // Наличие зазора
                 if (max1 < min2 || max2 < min1) return false;
             }
         }
@@ -177,7 +174,6 @@ public class AsteroidsGame : UpdateableObject, IKeyboardClickable
 
             foreach (var bullet in _bullets)
             {
-                // Проверка точки (пули) внутри многоугольника (астероида)
                 if (IsPointInPolygon(bullet.Position, asteroidShape) && !bullet.IsDead)
                 {
                     bullet.IsDead = true;
@@ -186,7 +182,6 @@ public class AsteroidsGame : UpdateableObject, IKeyboardClickable
                 }
             }
 
-            // Также проверяем Корабль vs Астероид точно по форме
             if (!_player.IsInvincible && !_player.IsDead && ArePolygonsIntersecting(_player.GetWorldVertices(3), asteroidShape))
             {
                 LoseLive();

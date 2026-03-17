@@ -168,8 +168,8 @@ public class Spaceship : RenderableObject, IKeyboardClickable
     private void WrapAround()
     {
         Vector3 pos = _transform.Position;
-        if (pos.X > 3.2f) pos.X = -3.2f; else if (pos.X < -3.2f) pos.X = 3.2f;
-        if (pos.Y > 2f) pos.Y = -2f; else if (pos.Y < -2f) pos.Y = 2f;
+        if (pos.X > 2f) pos.X = 2f; else if (pos.X < -2f) pos.X = 2f;
+        if (pos.Y > 1.3f) pos.Y = -1.3f; else if (pos.Y < -1.3f) pos.Y = 1.3f;
         _transform.Position = pos;
     }
 

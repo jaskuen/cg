@@ -1,6 +1,4 @@
-﻿using Silk.NET.OpenGL;
-
-namespace SilkOpenGL.Store;
+﻿namespace SilkOpenGL.Store;
 
 public class TextureStore : IDisposable
 {

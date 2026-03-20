@@ -1,12 +1,10 @@
-﻿using System.Drawing;
-using System.IO;
 using System.Numerics;
 using Lab3.Asteroids;
 using Silk.NET.Maths;
 using Silk.NET.Windowing;
 using SilkOpenGL;
+using SilkOpenGL.Lighting;
 using SilkOpenGL.Store;
-using SilkOpenGL.Text;
 
 class Program
 {
@@ -22,6 +20,15 @@ class Program
         storeManager.AddShader(LineShaderName, "Shaders/line.vert", "Shaders/line.frag");
 
         World world = new World(options, storeManager);
+        world.AddObject(new LightEntity
+        {
+            Position = new Vector3(0f, 0f, 1.2f),
+            Ambient = new Vector3(0.15f, 0.15f, 0.2f),
+            Diffuse = new Vector3(1f, 0.95f, 0.85f),
+            Intensity = 1.1f,
+            Linear = 0.14f,
+            Quadratic = 0.12f
+        });
 
         AsteroidsGame game = new AsteroidsGame(world);
         world.AddObject(game);

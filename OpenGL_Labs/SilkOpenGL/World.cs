@@ -1,12 +1,13 @@
-﻿using System.Drawing;
+using System.Drawing;
 using System.Numerics;
 using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.OpenGL;
 using Silk.NET.Windowing;
-using SilkOpenGL.Helpers;
+using SilkOpenGL.Lighting;
 using SilkOpenGL.Objects;
 using SilkOpenGL.Store;
+using CameraType = SilkOpenGL.Camera.Camera;
 
 namespace SilkOpenGL;
 
@@ -18,25 +19,34 @@ public class World
     private TextureStore _textureStore;
     private FontStore _fontStore;
     private ObjectManager _objectManager;
-    private Camera _camera;
+    private CameraType _camera;
     private PickingService _pickingService;
 
     private IMouse? _mouse;
     private IKeyboard? _keyboard;
 
     private readonly List<IKeyboardClickable> _keyboardClickables = [];
+    private readonly List<LightEntity> _lights = [];
 
     private IClickable? _lastActive;
 
-    private bool _useMouseCameraMove = false;
+    private bool _useMouseCameraMove = true;
+    private readonly CameraMode _cameraMode;
 
-    public World(WindowOptions windowOptions, ShaderStore shaderStore, TextureStore textureStore, FontStore fontStore)
+    public World(
+        WindowOptions windowOptions,
+        ShaderStore shaderStore,
+        TextureStore textureStore,
+        FontStore fontStore,
+        CameraMode cameraMode = CameraMode.Fps)
     {
         _shaderStore = shaderStore;
         _textureStore = textureStore;
         _fontStore = fontStore;
+        _cameraMode = cameraMode;
         _objectManager = new ObjectManager(_shaderStore, _textureStore, _fontStore);
-        _camera = new Camera();
+        _camera = new CameraType();
+        _camera.SetMode(_cameraMode, Vector3.Zero);
         _pickingService = new PickingService(windowOptions.Size.X, windowOptions.Size.Y);
 
         _window = Window.Create(windowOptions);
@@ -47,8 +57,8 @@ public class World
         _window.Closing += OnUnload;
     }
 
-    public World(WindowOptions windowOptions, StoreManager storeManager) : this(windowOptions, storeManager.ShaderStore,
-        storeManager.TextureStore, storeManager.FontStore)
+    public World(WindowOptions windowOptions, StoreManager storeManager, CameraMode cameraMode = CameraMode.Fps)
+        : this(windowOptions, storeManager.ShaderStore, storeManager.TextureStore, storeManager.FontStore, cameraMode)
     {
     }
 
@@ -90,6 +100,8 @@ public class World
 
             _gl.UniformMatrix4(viewLoc, 1, false, (float*)&view);
             _gl.UniformMatrix4(projLoc, 1, false, (float*)&proj);
+
+            ApplyLights(kv.Value);
         }
 
         _objectManager.Render(_gl, dt);
@@ -135,7 +147,11 @@ public class World
 
         if (_useMouseCameraMove)
         {
-            mouse.Cursor.CursorMode = CursorMode.Raw;
+            if (_cameraMode == CameraMode.Fps)
+            {
+                mouse.Cursor.CursorMode = CursorMode.Raw;
+            }
+
             mouse.MouseMove += (_, delta) => _camera.ProcessMouseMove(mouse, delta);
         }
 
@@ -168,7 +184,7 @@ public class World
     {
         Vector2 mousePos = mouse.Position;
 
-        if (_useMouseCameraMove)
+        if (_useMouseCameraMove && _cameraMode == CameraMode.Fps)
         {
             mousePos = new Vector2((float)_window.Size.X / 2, (float)_window.Size.Y / 2);
         }
@@ -249,9 +265,35 @@ public class World
         _gl.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
     }
 
+    private void ApplyLights(Shader shader)
+    {
+        var activeLights = _lights.Where(x => x.Enabled).Take(8).ToList();
+        shader.TrySetUniform("uLightCount", activeLights.Count);
+
+        for (int i = 0; i < activeLights.Count; i++)
+        {
+            LightEntity light = activeLights[i];
+            string prefix = $"uLights[{i}]";
+
+            shader.TrySetUniform($"{prefix}.position", light.Position);
+            shader.TrySetUniform($"{prefix}.ambient", light.Ambient);
+            shader.TrySetUniform($"{prefix}.diffuse", light.Diffuse);
+            shader.TrySetUniform($"{prefix}.specular", light.Specular);
+            shader.TrySetUniform($"{prefix}.intensity", light.Intensity);
+            shader.TrySetUniform($"{prefix}.constant", light.Constant);
+            shader.TrySetUniform($"{prefix}.linear", light.Linear);
+            shader.TrySetUniform($"{prefix}.quadratic", light.Quadratic);
+        }
+    }
+
     // Публичные методы для добавления/удаления
     public void AddObject(UpdateableObject obj)
     {
+        if (obj is LightEntity lightEntity)
+        {
+            _lights.Add(lightEntity);
+        }
+
         if (obj is RenderableObject renderable)
         {
             _objectManager.Add(renderable);
@@ -281,6 +323,16 @@ public class World
     }
 
     public void RemoveObject(RenderableObject obj) => _objectManager.Remove(obj);
+    
+    public void AddLight(LightEntity light)
+    {
+        _lights.Add(light);
+    }
+
+    public bool RemoveLight(LightEntity light)
+    {
+        return _lights.Remove(light);
+    }
 
     public void Run() => _window.Run();
 }

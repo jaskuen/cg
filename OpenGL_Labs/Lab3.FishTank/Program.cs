@@ -1,7 +1,9 @@
-﻿using Lab3.FishTank;
+using Lab3.FishTank;
+using System.Numerics;
 using Silk.NET.Maths;
 using Silk.NET.Windowing;
 using SilkOpenGL;
+using SilkOpenGL.Lighting;
 using SilkOpenGL.Store;
 
 class Program
@@ -18,6 +20,15 @@ class Program
         storeManager.AddShader(LineShaderName, "Shaders/line.vert", "Shaders/line.frag");
 
         World world = new World(options, storeManager);
+        world.AddObject(new LightEntity
+        {
+            Position = new Vector3(0f, 0.5f, 1f),
+            Ambient = new Vector3(0.25f, 0.25f, 0.35f),
+            Diffuse = new Vector3(0.8f, 0.9f, 1f),
+            Intensity = 1.2f,
+            Linear = 0.12f,
+            Quadratic = 0.1f
+        });
 
         Scene scene = new Scene(world);
         

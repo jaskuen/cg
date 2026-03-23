@@ -3,8 +3,6 @@ using System.Numerics;
 using Silk.NET.OpenGL;
 using SilkOpenGL;
 using SilkOpenGL.Objects;
-using Shader = SilkOpenGL.Shader;
-using Texture = SilkOpenGL.Texture;
 
 namespace Lab2;
 

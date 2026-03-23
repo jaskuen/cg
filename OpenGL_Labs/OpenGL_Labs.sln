@@ -10,6 +10,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lab3.FishTank", "Lab3.FishT
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lab4.Dodecahedron", "Lab4.Dodecahedron\Lab4.Dodecahedron.csproj", "{628682DB-2FF8-4EFB-8686-361717E19763}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lab4.Labyrinth", "Lab4.Labyrinth\Lab4.Labyrinth.csproj", "{1E3A9DBC-2AE1-446B-9399-859C330EE193}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -80,6 +82,18 @@ Global
 		{628682DB-2FF8-4EFB-8686-361717E19763}.Release|x64.Build.0 = Release|Any CPU
 		{628682DB-2FF8-4EFB-8686-361717E19763}.Release|x86.ActiveCfg = Release|Any CPU
 		{628682DB-2FF8-4EFB-8686-361717E19763}.Release|x86.Build.0 = Release|Any CPU
+		{1E3A9DBC-2AE1-446B-9399-859C330EE193}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1E3A9DBC-2AE1-446B-9399-859C330EE193}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1E3A9DBC-2AE1-446B-9399-859C330EE193}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{1E3A9DBC-2AE1-446B-9399-859C330EE193}.Debug|x64.Build.0 = Debug|Any CPU
+		{1E3A9DBC-2AE1-446B-9399-859C330EE193}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{1E3A9DBC-2AE1-446B-9399-859C330EE193}.Debug|x86.Build.0 = Debug|Any CPU
+		{1E3A9DBC-2AE1-446B-9399-859C330EE193}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1E3A9DBC-2AE1-446B-9399-859C330EE193}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1E3A9DBC-2AE1-446B-9399-859C330EE193}.Release|x64.ActiveCfg = Release|Any CPU
+		{1E3A9DBC-2AE1-446B-9399-859C330EE193}.Release|x64.Build.0 = Release|Any CPU
+		{1E3A9DBC-2AE1-446B-9399-859C330EE193}.Release|x86.ActiveCfg = Release|Any CPU
+		{1E3A9DBC-2AE1-446B-9399-859C330EE193}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

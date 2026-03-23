@@ -6,7 +6,7 @@ public class TextureStore : IDisposable
 
     public void CreateTexture(string textureKey, string path)
     {
-        _textures.Add(textureKey, new Texture(path));
+        _textures.Add(textureKey, new Texture(path, _textures.Count));
     }
 
     public Texture GetTexture(string textureKey)

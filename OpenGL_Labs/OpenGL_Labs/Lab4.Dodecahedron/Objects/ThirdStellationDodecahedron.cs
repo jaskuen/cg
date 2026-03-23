@@ -86,38 +86,32 @@ public class ThirdStellationDodecahedron : RenderableObject
 
     private void BuildGeometry()
     {
-        // Вершины внутреннего ядра (Икосаэдра)
         List<Vector3> coreVertices = BuildIcosahedronVertices();
         List<int[]> coreFaces = BuildIcosahedronFaces();
         List<TriangleData> triangles = [];
 
-        // Золотое сечение для расчета высоты пиков
+        // золотое сечение
         float phi = ( 1.0f + MathF.Sqrt( 5.0f ) ) / 2.0f;
 
-        // Коэффициент высоты для Большого звёздчатого додекаэдра
-        // Чтобы вершины пирамид совпали с вершинами додекаэдра, 
-        // высота должна соотноситься с радиусом икосаэдра определенным образом.
-        // Для GSD это расстояние от центра до вершины додекаэдра.
-        float tipScale = phi * phi; // Соотношение внешнего радиуса к внутреннему
+        float tipScale = phi * phi;
 
         for ( int faceIndex = 0; faceIndex < coreFaces.Count; faceIndex++ )
         {
             int[] face = coreFaces[faceIndex];
 
-            // Вершины грани икосаэдра
+            // вершины грани икосаэдра
             Vector3 v1 = coreVertices[face[0]];
             Vector3 v2 = coreVertices[face[1]];
             Vector3 v3 = coreVertices[face[2]];
 
-            // Находим центр грани и нормаль
+            // центр грани и нормаль
             Vector3 center = ( v1 + v2 + v3 ) / 3.0f;
             Vector3 normal = Vector3.Normalize( center );
 
-            // Вершина пика (Apex). 
-            // В GSD пики очень длинные. Мы берем направление из центра и масштабируем.
+            // вершина пика
             Vector3 apex = normal * ( center.Length() * tipScale );
 
-            // Каждая грань икосаэдра превращается в 3 треугольника пирамиды
+            // грань -> 3 треугольника 
             AddOrientedTriangle( triangles, v1, v2, apex );
             AddOrientedTriangle( triangles, v2, v3, apex );
             AddOrientedTriangle( triangles, v3, v1, apex );
@@ -205,7 +199,6 @@ public class ThirdStellationDodecahedron : RenderableObject
 
     private static List<Vector3> BuildTriangleColors( List<TriangleData> triangles )
     {
-        // Soft palette so adjacent triangles are visibly distinct.
         Vector3[] palette =
         [
             new(0.95f, 0.45f, 0.45f),

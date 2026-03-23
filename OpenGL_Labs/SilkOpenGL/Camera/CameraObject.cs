@@ -30,8 +30,30 @@ public class CameraObject
     {
         float speed = 2.5f * (float)dt;
 
-        if (keyboard.IsKeyPressed(Key.W)) Position += Front * speed;
-        if (keyboard.IsKeyPressed(Key.S)) Position -= Front * speed;
+        if (keyboard.IsKeyPressed(Key.W))
+        {
+            Position += Front * speed;
+            if (_orbitRadius - speed >= 0)
+            {
+                _orbitRadius -= speed;
+            }
+            else
+            {
+                _orbitRadius = 0;
+            }
+        }
+
+        if (keyboard.IsKeyPressed(Key.S))
+        {
+            Position -= Front * speed;
+            _orbitRadius += speed;
+        }
+
+        if (Mode == CameraMode.Rotate)
+        {
+            return;
+        }
+
         if (keyboard.IsKeyPressed(Key.A)) Position -= Vector3.Normalize(Vector3.Cross(Front, Up)) * speed;
         if (keyboard.IsKeyPressed(Key.D)) Position += Vector3.Normalize(Vector3.Cross(Front, Up)) * speed;
         if (keyboard.IsKeyPressed(Key.Q)) Rotate(new Vector2(-100 * speed, 0));

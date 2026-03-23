@@ -88,8 +88,6 @@ public class World
         CompileShadersAndTextures();
 
         AddInputContext();
-
-        // Инициализация глобальных ресурсов, если нужно
     }
 
     private void OnUpdate(double dt)

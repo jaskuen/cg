@@ -28,7 +28,6 @@ public class KleinBottle : RenderableObject
         _gl.Enable(EnableCap.Blend);
         _gl.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
         
-        // Klein bottle is a non-orientable surface, so we must disable culling
         _gl.Disable(EnableCap.CullFace);
 
         _shader.Use();
@@ -55,7 +54,6 @@ public class KleinBottle : RenderableObject
         _ebo = new BufferObject<uint>(_gl, _indices, BufferTargetARB.ElementArrayBuffer);
         _vao = new VertexArrayObject<float, uint>(_gl, _vbo, _ebo);
         
-        // Layout: Pos(3), Normal(3), Color(3)
         _vao.VertexAttributePointer(0, 3, VertexAttribPointerType.Float, 9, 0);
         _vao.VertexAttributePointer(1, 3, VertexAttribPointerType.Float, 9, 3);
         _vao.VertexAttributePointer(2, 3, VertexAttribPointerType.Float, 9, 6);
@@ -73,7 +71,6 @@ public class KleinBottle : RenderableObject
         Vector3[] positions = new Vector3[vertexCount];
         Vector3[] normals = new Vector3[vertexCount];
 
-        // 1. Generate positions
         for (int i = 0; i <= _parts; i++)
         {
             float u = i * deltaU;
@@ -99,7 +96,6 @@ public class KleinBottle : RenderableObject
             }
         }
 
-        // 2. Generate indices and calculate face normals for averaging
         List<uint> indicesList = [];
         for (int i = 0; i < _parts; i++)
         {
@@ -123,7 +119,6 @@ public class KleinBottle : RenderableObject
                 normals[p2] += n1;
                 normals[p3] += n1;
 
-                // Triangle 2
                 indicesList.Add(p1);
                 indicesList.Add(p3);
                 indicesList.Add(p4);

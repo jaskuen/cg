@@ -19,7 +19,7 @@ class Program
         StoreManager storeManager = new StoreManager();
         storeManager.AddShader(LineShaderName, "Shaders/line.vert", "Shaders/line.frag");
 
-        World world = new World(options, storeManager);
+        World world = new World(options, storeManager, null);
         world.AddObject(new LightEntity
         {
             Position = new Vector3(0f, 0f, 1.2f),

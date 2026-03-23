@@ -13,15 +13,17 @@ public class ObjectManager
     private readonly ShaderStore _shaderStore;
     private readonly TextureStore _textureStore;
     private readonly FontStore _fontStore;
+    private readonly MaterialStore _materialStore;
 
     // Для оптимизации: группировка по шейдерам (опционально, добавь позже)
     private Dictionary<string, List<RenderableObject>> _objectsByShader = new();
 
-    public ObjectManager(ShaderStore shaderStore, TextureStore textureStore, FontStore fontStore)
+    public ObjectManager(ShaderStore shaderStore, TextureStore textureStore, FontStore fontStore, MaterialStore materialStore)
     {
         _shaderStore = shaderStore;
         _textureStore = textureStore;
         _fontStore = fontStore;
+        _materialStore = materialStore;
     }
 
     public void Add(RenderableObject obj)
@@ -69,7 +71,7 @@ public class ObjectManager
     {
         foreach (var obj in _toAdd)
         {
-            obj.Init(_shaderStore, _textureStore, gl); // Инициализация ресурсов
+            obj.Init(_shaderStore, _textureStore, _materialStore, gl); // Инициализация ресурсов
 
             if (obj is IText textObj)
             {

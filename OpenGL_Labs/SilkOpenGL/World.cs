@@ -4,10 +4,10 @@ using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.OpenGL;
 using Silk.NET.Windowing;
+using SilkOpenGL.Camera;
 using SilkOpenGL.Lighting;
 using SilkOpenGL.Objects;
 using SilkOpenGL.Store;
-using CameraType = SilkOpenGL.Camera.Camera;
 
 namespace SilkOpenGL;
 
@@ -18,8 +18,10 @@ public class World
     private ShaderStore _shaderStore;
     private TextureStore _textureStore;
     private FontStore _fontStore;
+    private MaterialStore _materialStore;
     private ObjectManager _objectManager;
-    private CameraType _camera;
+    private CameraObject _camera;
+    private CameraMode _cameraMode;
     private PickingService _pickingService;
 
     private IMouse? _mouse;
@@ -31,22 +33,22 @@ public class World
     private IClickable? _lastActive;
 
     private bool _useMouseCameraMove = true;
-    private readonly CameraMode _cameraMode;
 
     public World(
         WindowOptions windowOptions,
         ShaderStore shaderStore,
         TextureStore textureStore,
         FontStore fontStore,
-        CameraMode cameraMode = CameraMode.Fps)
+        MaterialStore materialStore,
+        CameraObject? camera = null)
     {
         _shaderStore = shaderStore;
         _textureStore = textureStore;
         _fontStore = fontStore;
-        _cameraMode = cameraMode;
-        _objectManager = new ObjectManager(_shaderStore, _textureStore, _fontStore);
-        _camera = new CameraType();
-        _camera.SetMode(_cameraMode, Vector3.Zero);
+        _materialStore = materialStore;
+        _objectManager = new ObjectManager(_shaderStore, _textureStore, _fontStore, _materialStore);
+        _camera = camera ?? new CameraObject();
+        _cameraMode = _camera.Mode;
         _pickingService = new PickingService(windowOptions.Size.X, windowOptions.Size.Y);
 
         _window = Window.Create(windowOptions);
@@ -57,9 +59,20 @@ public class World
         _window.Closing += OnUnload;
     }
 
-    public World(WindowOptions windowOptions, StoreManager storeManager, CameraMode cameraMode = CameraMode.Fps)
-        : this(windowOptions, storeManager.ShaderStore, storeManager.TextureStore, storeManager.FontStore, cameraMode)
+    public World(WindowOptions windowOptions, StoreManager storeManager, CameraObject? camera = null)
+        : this(windowOptions, storeManager.ShaderStore, storeManager.TextureStore, storeManager.FontStore,
+            storeManager.MaterialStore, camera)
     {
+    }
+
+    public World(WindowOptions windowOptions, StoreManager storeManager, CameraMode mode = CameraMode.Fps)
+        : this(windowOptions,
+            storeManager.ShaderStore,
+            storeManager.TextureStore,
+            storeManager.FontStore,
+            storeManager.MaterialStore)
+    {
+        _camera.SetMode(mode);
     }
 
     private void OnLoad()
@@ -131,6 +144,31 @@ public class World
         {
             texture.Compile(_gl);
         }
+
+        InitTextureHandlesBuffer();
+    }
+
+    private unsafe void InitTextureHandlesBuffer()
+    {
+        List<ulong> handles = [];
+
+        var sortedTextures = _textureStore.AllTextures.Values.OrderBy(x => x.TextureId).ToList();
+        handles.AddRange(sortedTextures.Select(x => x.BindlessHandle));
+
+        ulong[] textureHandles = handles.ToArray();
+
+        uint ssbo = _gl.GenBuffer();
+        _gl.BindBuffer(BufferTargetARB.ShaderStorageBuffer, ssbo);
+
+        fixed (ulong* ptr = textureHandles)
+        {
+            _gl.BufferData(BufferTargetARB.ShaderStorageBuffer,
+                (nuint)(textureHandles.Length * sizeof(ulong)),
+                ptr,
+                BufferUsageARB.StaticDraw);
+        }
+
+        _gl.BindBufferBase(BufferTargetARB.ShaderStorageBuffer, 0, ssbo);
     }
 
     private void AddInputContext()
@@ -161,7 +199,7 @@ public class World
 
         // mouse.MouseMove += (_, delta) => Console.WriteLine(delta);
 
-        // _window.Update += dt => _camera.ProcessKeyboard(keyboard, dt);
+        _window.Update += dt => _camera.ProcessKeyboard(keyboard, dt);
     }
 
     private void RegisterInputObjects()
@@ -192,7 +230,7 @@ public class World
         // Console.WriteLine($"{clickedPosition.X}, {clickedPosition.Y}");
 
         DrawPickingTextures();
-        
+
         uint clickedId = _pickingService.ReadIdAt((int)mousePos.X, (int)mousePos.Y);
 
         if (clickedId != 0)
@@ -217,7 +255,8 @@ public class World
 
                 // Получаем мировые координаты объекта
                 float objectZ = (target as RenderableObject)?.Position.Z ?? 0;
-                Vector3 worldPos = _camera.Unproject(mousePos, new Vector2(_window.Size.X, _window.Size.Y), objectZ);
+                Vector3 worldPos =
+                    _camera.Unproject(mousePos, new Vector2(_window.Size.X, _window.Size.Y), objectZ);
 
                 switch (action)
                 {
@@ -323,7 +362,7 @@ public class World
     }
 
     public void RemoveObject(RenderableObject obj) => _objectManager.Remove(obj);
-    
+
     public void AddLight(LightEntity light)
     {
         _lights.Add(light);

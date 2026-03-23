@@ -8,7 +8,7 @@ namespace Lab4.KleinBottle.Objects;
 
 public class KleinBottle : RenderableObject
 {
-    private int _parts = 200;
+    private int _parts = 100;
     private float _radius = 0.7f;
     private Color _baseColor = Color.FromArgb(255, 200, 155, 255);
     
@@ -72,7 +72,6 @@ public class KleinBottle : RenderableObject
         int vertexCount = (_parts + 1) * (_parts + 1);
         Vector3[] positions = new Vector3[vertexCount];
         Vector3[] normals = new Vector3[vertexCount];
-        Vector3 colorVec = new Vector3(_baseColor.R / 255f, _baseColor.G / 255f, _baseColor.B / 255f);
 
         // 1. Generate positions
         for (int i = 0; i <= _parts; i++)
@@ -136,9 +135,11 @@ public class KleinBottle : RenderableObject
                 normals[p4] += n2;
             }
         }
-
-        // 3. Normalize normals and build final vertex array
+        
         List<float> finalVertices = [];
+        
+        Vector3 colorVec = new Vector3(_baseColor.R / 255f, _baseColor.G / 255f, _baseColor.B / 255f);
+        
         for (int i = 0; i < vertexCount; i++)
         {
             Vector3 pos = positions[i];

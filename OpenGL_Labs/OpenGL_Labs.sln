@@ -12,6 +12,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lab4.Dodecahedron", "OpenGL
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lab4.KleinBottle", "Lab4.KleinBottle\Lab4.KleinBottle.csproj", "{20C4C174-0D04-46F3-A179-D7F5FDEEB7FB}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lab4.Labyrinth", "OpenGL_Labs\Lab4.Labyrinth\Lab4.Labyrinth.csproj", "{C04C3D61-F86B-4F64-A6AA-3EAFC31EF1CA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -94,6 +96,18 @@ Global
 		{20C4C174-0D04-46F3-A179-D7F5FDEEB7FB}.Release|x64.Build.0 = Release|Any CPU
 		{20C4C174-0D04-46F3-A179-D7F5FDEEB7FB}.Release|x86.ActiveCfg = Release|Any CPU
 		{20C4C174-0D04-46F3-A179-D7F5FDEEB7FB}.Release|x86.Build.0 = Release|Any CPU
+		{C04C3D61-F86B-4F64-A6AA-3EAFC31EF1CA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C04C3D61-F86B-4F64-A6AA-3EAFC31EF1CA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C04C3D61-F86B-4F64-A6AA-3EAFC31EF1CA}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{C04C3D61-F86B-4F64-A6AA-3EAFC31EF1CA}.Debug|x64.Build.0 = Debug|Any CPU
+		{C04C3D61-F86B-4F64-A6AA-3EAFC31EF1CA}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{C04C3D61-F86B-4F64-A6AA-3EAFC31EF1CA}.Debug|x86.Build.0 = Debug|Any CPU
+		{C04C3D61-F86B-4F64-A6AA-3EAFC31EF1CA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C04C3D61-F86B-4F64-A6AA-3EAFC31EF1CA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C04C3D61-F86B-4F64-A6AA-3EAFC31EF1CA}.Release|x64.ActiveCfg = Release|Any CPU
+		{C04C3D61-F86B-4F64-A6AA-3EAFC31EF1CA}.Release|x64.Build.0 = Release|Any CPU
+		{C04C3D61-F86B-4F64-A6AA-3EAFC31EF1CA}.Release|x86.ActiveCfg = Release|Any CPU
+		{C04C3D61-F86B-4F64-A6AA-3EAFC31EF1CA}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -19,9 +19,9 @@ public static class ColorHelper
         }
         else
         {
-            red = (255 - red) * correctionFactor + red;
-            green = (255 - green) * correctionFactor + green;
-            blue = (255 - blue) * correctionFactor + blue;
+            red = Math.Min((255 - red) * correctionFactor + red, 255);
+            green = Math.Min((255 - green) * correctionFactor + green, 255);
+            blue = Math.Min((255 - blue) * correctionFactor + blue, 255);
         }
 
         return Color.FromArgb(color.A, (int)red, (int)green, (int)blue);

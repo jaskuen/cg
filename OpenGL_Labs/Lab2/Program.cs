@@ -30,8 +30,9 @@ class Program
         textureStore.CreateTexture(TileTextureName, "tile.jpg");
 
         FontStore fontStore = new FontStore();
+        MaterialStore materialStore = new MaterialStore(textureStore);
 
-        var world = new World(options, shaderStore, textureStore, fontStore);
+        var world = new World(options, shaderStore, textureStore, fontStore, materialStore);
 
         GameField gameField = new GameField(world);
         world.AddObject(gameField);

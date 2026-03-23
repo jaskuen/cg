@@ -132,6 +132,66 @@ public class Shader : IDisposable
         _gl.Uniform1(location, value);
     }
 
+    public bool TrySetUniform(string name, int value)
+    {
+        int location = _gl.GetUniformLocation(_handle, name);
+        if (location == -1)
+        {
+            return false;
+        }
+
+        _gl.Uniform1(location, value);
+        return true;
+    }
+
+    public bool TrySetUniform(string name, float value)
+    {
+        int location = _gl.GetUniformLocation(_handle, name);
+        if (location == -1)
+        {
+            return false;
+        }
+
+        _gl.Uniform1(location, value);
+        return true;
+    }
+
+    public bool TrySetUniform(string name, Vector3 value)
+    {
+        int location = _gl.GetUniformLocation(_handle, name);
+        if (location == -1)
+        {
+            return false;
+        }
+
+        _gl.Uniform3(location, value);
+        return true;
+    }
+
+    public unsafe bool TrySetUniform(string name, Matrix4x4 value)
+    {
+        int location = _gl.GetUniformLocation(_handle, name);
+        if (location == -1)
+        {
+            return false;
+        }
+
+        _gl.UniformMatrix4(location, 1, false, (float*)&value);
+        return true;
+    }
+
+    public bool TrySetUniform(string name, uint value)
+    {
+        int location = _gl.GetUniformLocation(_handle, name);
+        if (location == -1)
+        {
+            return false;
+        }
+
+        _gl.Uniform1(location, value);
+        return true;
+    }
+
     public void Dispose()
     {
         if (_isCompiled && _gl != null)

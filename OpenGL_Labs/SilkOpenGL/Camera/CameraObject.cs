@@ -1,33 +1,59 @@
 ﻿using System.Numerics;
 using Silk.NET.Input;
 
-namespace SilkOpenGL;
+namespace SilkOpenGL.Camera;
 
-public class Camera
+public class CameraObject
 {
-    private Vector2 _mousePosition = new(0, 0);
+    private Vector2 _mousePosition = Vector2.Zero;
+    private bool _isMouseInitialized;
 
     public Vector3 Position { get; set; } = new(0, 0, 2);
     public Vector3 Front { get; private set; } = new(0, 0, -1);
     public Vector3 Up { get; private set; } = Vector3.UnitY;
+    public Vector3 Target { get; private set; } = Vector3.Zero;
+    public CameraMode Mode { get; private set; } = CameraMode.Fps;
 
     private float _yaw = -90f;
     private float _pitch = 0f;
     private float _fov = 60f;
+    private float _orbitRadius = 2f;
 
-    private float _mouseSensitivity = 0.12f;
+    private float _mouseSensitivity = 0.22f;
 
     public Matrix4x4 ViewMatrix => Matrix4x4.CreateLookAt(Position, Position + Front, Up);
 
     public Matrix4x4 ProjectionMatrix(float aspectRatio)
         => Matrix4x4.CreatePerspectiveFieldOfView(DegreesToRadians(_fov), aspectRatio, 0.1f, 100f);
 
-    public void ProcessKeyboard(IKeyboard keyboard, double dt)
+    public virtual void ProcessKeyboard(IKeyboard keyboard, double dt)
     {
         float speed = 2.5f * (float)dt;
 
-        if (keyboard.IsKeyPressed(Key.W)) Position += Front * speed;
-        if (keyboard.IsKeyPressed(Key.S)) Position -= Front * speed;
+        if (keyboard.IsKeyPressed(Key.W))
+        {
+            Position += Front * speed;
+            if (_orbitRadius - speed >= 0)
+            {
+                _orbitRadius -= speed;
+            }
+            else
+            {
+                _orbitRadius = 0;
+            }
+        }
+
+        if (keyboard.IsKeyPressed(Key.S))
+        {
+            Position -= Front * speed;
+            _orbitRadius += speed;
+        }
+
+        if (Mode == CameraMode.Rotate)
+        {
+            return;
+        }
+
         if (keyboard.IsKeyPressed(Key.A)) Position -= Vector3.Normalize(Vector3.Cross(Front, Up)) * speed;
         if (keyboard.IsKeyPressed(Key.D)) Position += Vector3.Normalize(Vector3.Cross(Front, Up)) * speed;
         if (keyboard.IsKeyPressed(Key.Q)) Rotate(new Vector2(-100 * speed, 0));
@@ -36,10 +62,43 @@ public class Camera
 
     public void ProcessMouseMove(IMouse mouse, Vector2 newPos)
     {
+        if (!_isMouseInitialized)
+        {
+            _mousePosition = newPos;
+            _isMouseInitialized = true;
+            return;
+        }
+
         Vector2 delta = new Vector2(newPos.X - _mousePosition.X, newPos.Y - _mousePosition.Y);
         _mousePosition = newPos;
 
-        Rotate(delta);
+        if (Mode == CameraMode.Rotate)
+        {
+            Orbit(delta);
+        }
+        else
+        {
+            Rotate(delta);
+        }
+    }
+
+    public void SetMode(CameraMode mode, Vector3? centerPoint = null)
+    {
+        Mode = mode;
+        if (centerPoint.HasValue)
+        {
+            Target = centerPoint.Value;
+        }
+
+        if (Mode == CameraMode.Rotate)
+        {
+            SyncOrbitFromPosition();
+            UpdateOrbitCameraVectors();
+        }
+        else
+        {
+            _isMouseInitialized = false;
+        }
     }
 
     public Vector3 Unproject(Vector2 mousePos, Vector2 windowSize, float targetZ)
@@ -76,7 +135,7 @@ public class Camera
         );
     }
 
-    private void Rotate(Vector2 delta)
+    protected void Rotate(Vector2 delta)
     {
         _yaw += delta.X * _mouseSensitivity;
         _pitch -= delta.Y * _mouseSensitivity;
@@ -91,8 +150,49 @@ public class Camera
         Front = Vector3.Normalize(cameraDirection);
     }
 
-    private float DegreesToRadians(float degrees)
+    protected void Orbit(Vector2 delta)
+    {
+        _yaw += delta.X * _mouseSensitivity;
+        _pitch -= delta.Y * _mouseSensitivity;
+        _pitch = Math.Clamp(_pitch, -89f, 89f);
+
+        UpdateOrbitCameraVectors();
+    }
+
+    protected void SyncOrbitFromPosition()
+    {
+        Vector3 fromTarget = Position - Target;
+        _orbitRadius = MathF.Max(fromTarget.Length(), 0.001f);
+
+        float horizontalLength = MathF.Sqrt(fromTarget.X * fromTarget.X + fromTarget.Z * fromTarget.Z);
+        _pitch = RadiansToDegrees(MathF.Atan2(fromTarget.Y, MathF.Max(horizontalLength, 0.0001f)));
+        _yaw = RadiansToDegrees(MathF.Atan2(fromTarget.Z, fromTarget.X));
+    }
+
+    protected void UpdateOrbitCameraVectors()
+    {
+        float yawRad = DegreesToRadians(_yaw);
+        float pitchRad = DegreesToRadians(_pitch);
+
+        Vector3 sphereOffset = new Vector3(
+            _orbitRadius * MathF.Cos(pitchRad) * MathF.Cos(yawRad),
+            _orbitRadius * MathF.Sin(pitchRad),
+            _orbitRadius * MathF.Cos(pitchRad) * MathF.Sin(yawRad));
+
+        Position = Target + sphereOffset;
+        Front = Vector3.Normalize(Target - Position);
+
+        Vector3 right = Vector3.Normalize(Vector3.Cross(Front, Vector3.UnitY));
+        Up = Vector3.Normalize(Vector3.Cross(right, Front));
+    }
+
+    protected float DegreesToRadians(float degrees)
     {
         return degrees * MathF.PI / 180.0f;
+    }
+
+    protected float RadiansToDegrees(float radians)
+    {
+        return radians * 180.0f / MathF.PI;
     }
 }

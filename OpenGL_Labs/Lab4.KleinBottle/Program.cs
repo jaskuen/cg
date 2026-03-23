@@ -1,5 +1,8 @@
-﻿using Lab3.FishTank;
+﻿// See https://aka.ms/new-console-template for more information
+
 using System.Numerics;
+using Lab4.KleinBottle.Objects;
+using Silk.NET.Assimp;
 using Silk.NET.Maths;
 using Silk.NET.Windowing;
 using SilkOpenGL;
@@ -8,7 +11,7 @@ using SilkOpenGL.Store;
 
 class Program
 {
-    public const string LineShaderName = "LineShader";
+    public const string StellationShaderName = "StellationShader";
 
     public static void Main(string[] args)
     {
@@ -17,9 +20,9 @@ class Program
         options.Title = "Multiple Shapes Scene";
 
         StoreManager storeManager = new StoreManager();
-        storeManager.AddShader(LineShaderName, "Shaders/line.vert", "Shaders/line.frag");
+        storeManager.AddShader(StellationShaderName, "Shaders/stellation.vert", "Shaders/stellation.frag");
 
-        World world = new World(options, storeManager, null);
+        World world = new World(options, storeManager, CameraMode.Rotate);
         world.AddObject(new LightEntity
         {
             Position = new Vector3(0f, 0.5f, 1f),
@@ -30,10 +33,9 @@ class Program
             Quadratic = 0.1f
         });
 
-        Scene scene = new Scene(world);
+        KleinBottle bottle = new KleinBottle(StellationShaderName);
         
-        world.AddObject(scene);
+        world.AddObject(bottle);
         world.Run();
     }
 }
-

@@ -1,0 +1,6 @@
+﻿{
+  "albedo": "metal_color.jpg",
+  "normal": "metal_normal.jpg",
+  "metallic": "metal_metalness.jpg",
+  "roughness": "metal_roughness.jpg"
+}

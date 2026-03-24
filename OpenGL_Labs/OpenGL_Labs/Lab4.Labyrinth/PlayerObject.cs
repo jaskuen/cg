@@ -18,6 +18,11 @@ public class PlayerObject : CameraObject
         _currentCellCenter = currentCellCenter;
     }
 
+    public void SetWallSize(float wallSize)
+    {
+        _wallSize = wallSize;
+    }
+
     public override void ProcessKeyboard(IKeyboard keyboard, double dt)
     {
         if (_wallMap.Length != 9)

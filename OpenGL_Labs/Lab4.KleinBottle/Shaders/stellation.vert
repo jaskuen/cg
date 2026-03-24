@@ -10,19 +10,14 @@ uniform mat4 uProjection;
 
 out vec3 vWorldPos;
 out vec3 vWorldNormal;
-out vec3 vViewPos; // Передаем позицию камеры во фрагментный шейдер
+out vec3 vViewPos;
 out vec3 vFaceColor;
 
 void main()
 {
     vWorldPos = vec3(uModel * vec4(aPos, 1.0));
-    
-    // Вычисляем матрицу нормалей на лету (или передай её, если есть)
     vWorldNormal = mat3(uNormalMatrix) * aNormal;
 
-    // ИЗВЛЕКАЕМ ПОЗИЦИЮ КАМЕРЫ ИЗ uView
-    // Инвертируем матрицу вида. Четвертая колонка инвертированной матрицы - 
-    // это положение камеры в мировом пространстве.
     mat4 invView = inverse(uView);
     vViewPos = vec3(invView[3]); 
     vFaceColor = aFaceColor;

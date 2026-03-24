@@ -2,7 +2,7 @@
 
 in vec3 vWorldPos;
 in vec3 vWorldNormal;
-in vec3 vViewPos; // Получено из вертексного шейдера
+in vec3 vViewPos;
 in vec3 vFaceColor;
 
 uniform vec4 uColor = vec4(0.9, 0.7, 1.0, 0.5);
@@ -29,9 +29,7 @@ void main()
     vec3 baseColor = (uUseVertexColor == 1) ? vFaceColor : uColor.rgb;
     vec3 normal = normalize(vWorldNormal);
     vec3 viewDir = normalize(vViewPos - vWorldPos);
-
-    // ДЛЯ ЗВЕЗДЧАТОГО ДОДЕКАЭДРА:
-    // Поскольку грани пересекаются, мы можем видеть их сзади.
+    
     // Если мы смотрим на "тыльную" сторону, инвертируем нормаль, чтобы свет падал корректно.
     if (dot(normal, viewDir) < 0.0) {
         normal = -normal;
@@ -46,6 +44,7 @@ void main()
 
     for (int i = 0; i < uLightCount; i++)
     {
+        // вычисляем направление света
         vec3 toLight = uLights[i].position - vWorldPos;
         float distanceToLight = length(toLight);
         vec3 lightDir = normalize(toLight);
@@ -55,16 +54,17 @@ void main()
                                    uLights[i].linear * distanceToLight +
                                    uLights[i].quadratic * distanceToLight * distanceToLight);
 
-        // 1. Ambient
+        // Ambient
         vec3 ambient = baseColor * uLights[i].ambient;
 
-        // 2. Diffuse
+        // Diffuse
+        // получаем скалярное произведение векторов нормали и направления света
         float diffuseFactor = max(dot(normal, lightDir), 0.0);
         vec3 diffuse = baseColor * uLights[i].diffuse * diffuseFactor * uLights[i].intensity;
 
-        // 3. Specular (Блики) - делают грани "металлическими" и острыми
+        // Specular
         vec3 reflectDir = reflect(-lightDir, normal);
-        // Коэффициент 32.0 - это размер блика (чем больше, тем меньше и острее точка)
+        // 32.0 - размер блика
         float specFactor = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
         vec3 specular = uLights[i].specular * specFactor;
 

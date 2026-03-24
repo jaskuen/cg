@@ -23,6 +23,7 @@ public class LabyrinthField : UpdateableObject
     {
         _world = world;
         _player = player;
+        player.SetWallSize(_wallSize);
         _materialMap = materialMap;
         _shaderKey = shaderKey;
         
@@ -93,14 +94,5 @@ public class LabyrinthField : UpdateableObject
         );
 
         _player.SetWallMap(map, currentCellCenter);
-    }
-
-    public Wall? GetWallAt(int x, int z)
-    {
-        if (x >= 0 && x < _walls.GetLength(0) && z >= 0 && z < _walls.GetLength(1))
-        {
-            return _walls[x, z];
-        }
-        return null;
     }
 }

@@ -18,11 +18,10 @@ void main()
 {
     vec4 worldPos = uModel * vec4(aPosition, 1.0);
     vWorldPos = worldPos.xyz;
-    
+
     vWorldNormal = normalize(mat3(uNormalMatrix) * aNormal);
     vTexCoords = aTexCoords;
-    
-    // View position is the camera position in world space
+
     vViewPos = vec3(inverse(uView)[3]);
     
     gl_Position = uProjection * uView * worldPos;

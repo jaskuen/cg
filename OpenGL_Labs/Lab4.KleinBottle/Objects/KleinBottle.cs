@@ -2,16 +2,17 @@ using System.Drawing;
 using System.Numerics;
 using Silk.NET.OpenGL;
 using SilkOpenGL;
+using SilkOpenGL.Helpers;
 using SilkOpenGL.Objects;
 
 namespace Lab4.KleinBottle.Objects;
 
 public class KleinBottle : RenderableObject
 {
-    private int _parts = 100;
+    private int _parts = 50;
     private float _radius = 0.7f;
-    private Color _baseColor = Color.FromArgb(255, 200, 155, 255);
-    
+    private Color _baseColor = Color.FromArgb(255, 205, 255, 100);
+
     public KleinBottle(string shaderKey) : base(shaderKey)
     {
     }
@@ -27,7 +28,7 @@ public class KleinBottle : RenderableObject
 
         _gl.Enable(EnableCap.Blend);
         _gl.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
-        
+
         _gl.Disable(EnableCap.CullFace);
 
         _shader.Use();
@@ -53,7 +54,7 @@ public class KleinBottle : RenderableObject
         _vbo = new BufferObject<float>(_gl, _vertices, BufferTargetARB.ArrayBuffer);
         _ebo = new BufferObject<uint>(_gl, _indices, BufferTargetARB.ElementArrayBuffer);
         _vao = new VertexArrayObject<float, uint>(_gl, _vbo, _ebo);
-        
+
         _vao.VertexAttributePointer(0, 3, VertexAttribPointerType.Float, 9, 0);
         _vao.VertexAttributePointer(1, 3, VertexAttribPointerType.Float, 9, 3);
         _vao.VertexAttributePointer(2, 3, VertexAttribPointerType.Float, 9, 6);
@@ -70,6 +71,9 @@ public class KleinBottle : RenderableObject
         int vertexCount = (_parts + 1) * (_parts + 1);
         Vector3[] positions = new Vector3[vertexCount];
         Vector3[] normals = new Vector3[vertexCount];
+
+        float maxY = -float.MaxValue;
+        float maxX = -float.MaxValue;
 
         for (int i = 0; i <= _parts; i++)
         {
@@ -90,7 +94,11 @@ public class KleinBottle : RenderableObject
                     x = 6 * MathF.Cos(u) * (1 + MathF.Sin(u)) - factor * MathF.Cos(v);
                     y = 16 * MathF.Sin(u);
                 }
+
                 z = factor * MathF.Sin(v);
+
+                maxX = Math.Max(maxX, x);
+                maxY = Math.Max(maxY, y);
 
                 positions[i * (_parts + 1) + j] = new Vector3(x, y, z);
             }
@@ -130,11 +138,10 @@ public class KleinBottle : RenderableObject
                 normals[p4] += n2;
             }
         }
-        
+
         List<float> finalVertices = [];
-        
-        Vector3 colorVec = new Vector3(_baseColor.R / 255f, _baseColor.G / 255f, _baseColor.B / 255f);
-        
+
+
         for (int i = 0; i < vertexCount; i++)
         {
             Vector3 pos = positions[i];
@@ -146,6 +153,11 @@ public class KleinBottle : RenderableObject
             finalVertices.Add(norm.X);
             finalVertices.Add(norm.Y);
             finalVertices.Add(norm.Z);
+
+            float dc = (-pos.Y / maxY + pos.X / maxX) * 255;
+            Vector3 colorVec = new Vector3(Math.Clamp(_baseColor.R + dc, 0, 255) / 255f,
+                Math.Clamp(_baseColor.G - dc, 0, 255) / 255f, _baseColor.B / 255f);
+
             finalVertices.Add(colorVec.X);
             finalVertices.Add(colorVec.Y);
             finalVertices.Add(colorVec.Z);

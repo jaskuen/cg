@@ -36,7 +36,7 @@ public class Cardioid : RenderableObject
         _shader.Use();
         
         _shader.SetUniform("uModel", _transform.ModelMatrix);
-        _shader.SetUniform("uColor", Color.Black);
+        _shader.SetUniform("uColor", Color.GreenYellow);
         
         _vao.Bind();
         _gl.DrawElements(PrimitiveType.LineLoop, (uint)_indices.Length, DrawElementsType.UnsignedInt, null);

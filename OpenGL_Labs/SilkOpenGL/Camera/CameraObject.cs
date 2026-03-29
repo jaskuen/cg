@@ -135,6 +135,11 @@ public class CameraObject
         );
     }
 
+    public void SetViewPoint(Vector3 point)
+    {
+        Front = Vector3.Normalize(point - Position);
+    }
+
     protected void Rotate(Vector2 delta)
     {
         _yaw += delta.X * _mouseSensitivity;

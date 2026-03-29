@@ -32,7 +32,7 @@ public class World
 
     private IClickable? _lastActive;
 
-    private bool _useMouseCameraMove = true;
+    private bool _useMouseCameraMove = false;
 
     public World(
         WindowOptions windowOptions,
@@ -369,6 +369,11 @@ public class World
     public bool RemoveLight(LightEntity light)
     {
         return _lights.Remove(light);
+    }
+
+    public void SetCameraViewPoint(Vector3 point)
+    {
+        _camera.SetViewPoint(point);
     }
 
     public void Run() => _window.Run();

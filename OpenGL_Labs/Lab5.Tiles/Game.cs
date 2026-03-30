@@ -115,7 +115,7 @@ public class Game : UpdateableObject
                 _rows = 4;
                 _columns = 5;
                 _tileSize = 1.0f;
-                _boardY = -4f;
+                _boardY = -5f;
                 break;
             case GameMode.Hard:
                 _rows = 5;
@@ -213,8 +213,11 @@ public class Game : UpdateableObject
             if (!tile.IsFaceUp)
             {
                 tile.Lock();
-                return;
             }
+        }
+        else
+        {
+            tile.Lock();
         }
     }
 }

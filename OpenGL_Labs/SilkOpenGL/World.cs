@@ -32,7 +32,7 @@ public class World
 
     private IClickable? _lastActive;
 
-    private bool _useMouseCameraMove = true;
+    private bool _useMouseCameraMove = false;
 
     public World(
         WindowOptions windowOptions,
@@ -40,7 +40,8 @@ public class World
         TextureStore textureStore,
         FontStore fontStore,
         MaterialStore materialStore,
-        CameraObject? camera = null)
+        CameraObject? camera = null,
+        bool useMouseCameraMove = false)
     {
         _shaderStore = shaderStore;
         _textureStore = textureStore;
@@ -50,6 +51,7 @@ public class World
         _camera = camera ?? new CameraObject();
         _cameraMode = _camera.Mode;
         _pickingService = new PickingService(windowOptions.Size.X, windowOptions.Size.Y);
+        _useMouseCameraMove = useMouseCameraMove;
 
         _window = Window.Create(windowOptions);
         _window.Load += OnLoad;
@@ -59,9 +61,9 @@ public class World
         _window.Closing += OnUnload;
     }
 
-    public World(WindowOptions windowOptions, StoreManager storeManager, CameraObject? camera = null)
+    public World(WindowOptions windowOptions, StoreManager storeManager, CameraObject? camera = null, bool useMouseCameraMove = false)
         : this(windowOptions, storeManager.ShaderStore, storeManager.TextureStore, storeManager.FontStore,
-            storeManager.MaterialStore, camera)
+            storeManager.MaterialStore, camera, useMouseCameraMove)
     {
     }
 
@@ -70,7 +72,9 @@ public class World
             storeManager.ShaderStore,
             storeManager.TextureStore,
             storeManager.FontStore,
-            storeManager.MaterialStore)
+            storeManager.MaterialStore,
+            null,
+            true)
     {
         _camera.SetMode(mode);
     }
@@ -369,6 +373,11 @@ public class World
     public bool RemoveLight(LightEntity light)
     {
         return _lights.Remove(light);
+    }
+
+    public void SetCameraViewPoint(Vector3 point)
+    {
+        _camera.SetViewPoint(point);
     }
 
     public void Run() => _window.Run();

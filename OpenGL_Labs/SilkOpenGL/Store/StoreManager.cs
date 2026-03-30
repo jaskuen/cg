@@ -30,6 +30,13 @@ public class StoreManager
         _textureStore.CreateTexture(key, path);
     }
 
+    public string AddTextureAndGetKey(string key, string path)
+    {
+        AddTexture(key, path);
+        
+        return key;
+    }
+
     public void AddFont(string key, string path)
     {
         _fontStore.CreateFont(key, path);

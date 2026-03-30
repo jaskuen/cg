@@ -21,36 +21,59 @@ class Program
         storeManager.AddShader("FloorShader", "Shaders/shader.vert", "Shaders/shader.frag");
 
         storeManager.AddMaterial("MetalMaterial", "Textures/Metal/metal.json");
+        storeManager.AddMaterial("GoldMaterial", "Textures/Gold/gold.json");
+        storeManager.AddMaterial("LeatherMaterial", "Textures/Leather/leather.json");
+        storeManager.AddMaterial("SnowMaterial", "Textures/Snow/snow.json");
+        storeManager.AddMaterial("MossyMaterial", "Textures/MossyTiles/mossy.json");
+        storeManager.AddMaterial("TilesMaterial", "Textures/Tiles/tiles.json");
 
         PlayerObject player = new PlayerObject();
         player.Position = new Vector3(-6.5f, 0, -6.5f);
 
-        World world = new World(options, storeManager, player);
+        World world = new World(options, storeManager, player, true);
 
         var materialMap = new Dictionary<WallType, string>
         {
-            { WallType.Metal, "MetalMaterial" }
+            { WallType.Metal, "MetalMaterial" },
+            { WallType.Gold, "GoldMaterial" },
+            { WallType.Snow, "SnowMaterial" },
+            { WallType.Mossy, "MossyMaterial" },
+            { WallType.Tiles, "TilesMaterial" },
+            { WallType.Leather, "LeatherMaterial" },
         };
 
         int[,] map = new int[,]
         {
-            { 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3 },
-            { 3, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3 },
-            { 3, 0, 3, 0, 3, 0, 3, 3, 3, 3, 3, 3, 3, 3, 0, 3 },
-            { 3, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 3 },
-            { 3, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 0, 3, 0, 3 },
-            { 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 3, 0, 3 },
-            { 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 0, 3, 0, 3, 0, 3 },
-            { 3, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 3, 0, 3, 0, 3 },
-            { 3, 0, 3, 3, 3, 3, 3, 3, 0, 3, 0, 3, 0, 3, 0, 3 },
-            { 3, 0, 3, 0, 0, 0, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3 },
-            { 3, 0, 3, 0, 3, 3, 0, 3, 0, 3, 0, 3, 0, 3, 0, 3 },
-            { 3, 0, 3, 0, 3, 0, 0, 3, 0, 3, 0, 0, 0, 3, 0, 3 },
-            { 3, 0, 3, 0, 3, 3, 3, 3, 0, 3, 3, 3, 3, 3, 0, 3 },
-            { 3, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3 },
-            { 3, 0, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3 },
-            { 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3 }
+            { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
+            { 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 },
+            { 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1 },
+            { 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1 },
+            { 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1 },
+            { 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1 },
+            { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1 },
+            { 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1 },
+            { 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1 },
+            { 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1 },
+            { 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1 },
+            { 1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1 },
+            { 1, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1 },
+            { 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 },
+            { 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
+            { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }
         };
+        
+        Random random = new Random();
+
+        for (int i = 0; i < map.GetLength(0); i++)
+        {
+            for (int j = 0; j < map.GetLength(1); j++)
+            {
+                if (map[i, j] == 1)
+                {
+                    map[i, j] = random.Next(1, 6);
+                }
+            }
+        }
 
         var labyrinth = new LabyrinthField(world, player, map, materialMap, "PbrShader");
         world.AddObject(labyrinth);

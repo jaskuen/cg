@@ -20,7 +20,7 @@ public class Game : UpdateableObject
 
     private int _selectedTilesAnimationDuration = 1;
 
-    private GameMode _gameMode = GameMode.Easy;
+    private GameMode _gameMode;
     private int _rows;
     private int _columns;
 
@@ -198,14 +198,14 @@ public class Game : UpdateableObject
     {
         if (_state is GameState.NoTilesSelected or GameState.OneTileSelected)
         {
-            if (!tile.IsFaceUp)
+            if (!tile.IsFaceUp && !_selectedTiles.Contains(tile))
             {
                 tile.Unlock();
                 _selectedTiles.Add(tile);
-            }
 
-            _state = _state == GameState.NoTilesSelected ? GameState.OneTileSelected : GameState.TwoTilesSelected;
-            return;
+                _state = _state == GameState.NoTilesSelected ? GameState.OneTileSelected : GameState.TwoTilesSelected;
+                return;
+            }
         }
 
         if (_state == GameState.TwoTilesSelected)

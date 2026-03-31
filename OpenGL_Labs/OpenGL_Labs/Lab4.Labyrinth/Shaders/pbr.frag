@@ -43,6 +43,7 @@ uniform Material uMaterial;
 
 const float PI = 3.14159265359;
 
+// объяснить работу функций Gl в pbr
 vec3 getNormalFromMap()
 {
     if (uMaterial.hasNormalMap == 1) {
@@ -72,6 +73,8 @@ vec3 getNormalFromMap()
     return normalize(vWorldNormal);
 }
 
+// функция распределения отраженного света с учетом микрограней. 
+// Описывает количество микрограней, повернутых к нам так, чтобы отражать свет к нам в глаз.
 float DistributionGGX(vec3 N, vec3 H, float roughness)
 {
     float a = roughness*roughness;
@@ -86,6 +89,12 @@ float DistributionGGX(vec3 N, vec3 H, float roughness)
     return nom / max(denom, 0.0000001);
 }
 
+// Учитывает самозатенение (маскирование) микрограней.
+// Когда мы смотрим на поверхность под большим углом, микрограни друг друга 
+// частично закрывают. Из-за этого реальное отражение света уменьшается.
+// Функция уменьшает вклад отражения в зависимости от:
+// Угла между нормалью и направлением взгляда (NdotV)
+// Шероховатости поверхности
 float GeometrySchlickGGX(float NdotV, float roughness)
 {
     float r = (roughness + 1.0);
@@ -107,6 +116,9 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
     return ggx1 * ggx2;
 }
 
+// Коэффициенты отражения Френеля. Не весь свет отражается. 
+// Часть света преломляется и попадет внутрь материала. 
+// В данной функции описывает количество отраженного света.
 vec3 fresnelSchlick(float cosTheta, vec3 F0)
 {
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
@@ -129,6 +141,9 @@ void main()
         roughness = texture(sampler2D(uTextures[uMaterial.roughnessMap]), vTexCoords).r;
     }
     
+    // what is AO
+    // Карта черно-белых теней, которая имитирует отсутствие 
+    // света в трещинах, порах и стыках, значительно повышая детализацию.
     float ao = 1.0;
     if (uMaterial.hasAoMap == 1) {
         ao = texture(sampler2D(uTextures[uMaterial.aoMap]), vTexCoords).r;

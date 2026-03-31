@@ -22,8 +22,8 @@ class Program
         AddTextures(storeManager);
 
         World world = new World(options, storeManager, null);
-        
-        Game game = new Game(world, Textures, TileShaderName, GameMode.Normal);
+
+        Game game = new Game(world, Textures, TileShaderName, GameMode.Hard);
         
         world.AddObject(game);
         world.Run();

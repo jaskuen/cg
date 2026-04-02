@@ -1,4 +1,4 @@
-using Lab3.FishTank;
+﻿using Lab3.FishTank;
 using System.Numerics;
 using Silk.NET.Maths;
 using Silk.NET.Windowing;
@@ -19,7 +19,7 @@ class Program
         StoreManager storeManager = new StoreManager();
         storeManager.AddShader(LineShaderName, "Shaders/line.vert", "Shaders/line.frag");
 
-        World world = new World(options, storeManager);
+        World world = new World(options, storeManager, null);
         world.AddObject(new LightEntity
         {
             Position = new Vector3(0f, 0.5f, 1f),

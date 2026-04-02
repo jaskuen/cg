@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 using SilkOpenGL.Objects;
 
 namespace SilkOpenGL.Lighting;

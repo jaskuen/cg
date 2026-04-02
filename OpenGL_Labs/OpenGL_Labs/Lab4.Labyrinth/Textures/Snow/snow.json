@@ -1,0 +1,6 @@
+﻿{
+  "albedo": "snow_color.jpg",
+  "normal": "snow_normal.jpg",
+  "metallic": "snow_metalness.jpg",
+  "roughness": "snow_roughness.jpg"
+}

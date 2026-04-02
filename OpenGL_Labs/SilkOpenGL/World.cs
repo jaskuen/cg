@@ -1,13 +1,13 @@
-using System.Drawing;
+﻿using System.Drawing;
 using System.Numerics;
 using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.OpenGL;
 using Silk.NET.Windowing;
+using SilkOpenGL.Camera;
 using SilkOpenGL.Lighting;
 using SilkOpenGL.Objects;
 using SilkOpenGL.Store;
-using CameraType = SilkOpenGL.Camera.Camera;
 
 namespace SilkOpenGL;
 
@@ -20,7 +20,8 @@ public class World
     private FontStore _fontStore;
     private MaterialStore _materialStore;
     private ObjectManager _objectManager;
-    private CameraType _camera;
+    private CameraObject _camera;
+    private CameraMode _cameraMode;
     private PickingService _pickingService;
 
     private IMouse? _mouse;
@@ -31,8 +32,7 @@ public class World
 
     private IClickable? _lastActive;
 
-    private bool _useMouseCameraMove = true;
-    private readonly CameraMode _cameraMode;
+    private bool _useMouseCameraMove = false;
 
     public World(
         WindowOptions windowOptions,
@@ -40,19 +40,20 @@ public class World
         TextureStore textureStore,
         FontStore fontStore,
         MaterialStore materialStore,
-        CameraMode cameraMode = CameraMode.Fps )
+        CameraObject? camera = null,
+        bool useMouseCameraMove = false)
     {
         _shaderStore = shaderStore;
         _textureStore = textureStore;
         _fontStore = fontStore;
         _materialStore = materialStore;
-        _cameraMode = cameraMode;
-        _objectManager = new ObjectManager( _shaderStore, _textureStore, _fontStore, _materialStore );
-        _camera = new CameraType();
-        _camera.SetMode( _cameraMode, Vector3.Zero );
-        _pickingService = new PickingService( windowOptions.Size.X, windowOptions.Size.Y );
+        _objectManager = new ObjectManager(_shaderStore, _textureStore, _fontStore, _materialStore);
+        _camera = camera ?? new CameraObject();
+        _cameraMode = _camera.Mode;
+        _pickingService = new PickingService(windowOptions.Size.X, windowOptions.Size.Y);
+        _useMouseCameraMove = useMouseCameraMove;
 
-        _window = Window.Create( windowOptions );
+        _window = Window.Create(windowOptions);
         _window.Load += OnLoad;
         _window.Update += OnUpdate;
         _window.Render += OnRender;
@@ -60,60 +61,71 @@ public class World
         _window.Closing += OnUnload;
     }
 
-    public World( WindowOptions windowOptions, StoreManager storeManager, CameraMode cameraMode = CameraMode.Fps )
-        : this( windowOptions, storeManager.ShaderStore, storeManager.TextureStore, storeManager.FontStore, storeManager.MaterialStore, cameraMode )
+    public World(WindowOptions windowOptions, StoreManager storeManager, CameraObject? camera = null, bool useMouseCameraMove = false)
+        : this(windowOptions, storeManager.ShaderStore, storeManager.TextureStore, storeManager.FontStore,
+            storeManager.MaterialStore, camera, useMouseCameraMove)
     {
+    }
+
+    public World(WindowOptions windowOptions, StoreManager storeManager, CameraMode mode = CameraMode.Fps)
+        : this(windowOptions,
+            storeManager.ShaderStore,
+            storeManager.TextureStore,
+            storeManager.FontStore,
+            storeManager.MaterialStore,
+            null,
+            true)
+    {
+        _camera.SetMode(mode);
     }
 
     private void OnLoad()
     {
         _gl = _window.CreateOpenGL();
 
-        _pickingService.SetupFramebuffer( _gl );
+        _pickingService.SetupFramebuffer(_gl);
 
-        _gl.Enable( EnableCap.Blend );
-        _gl.BlendFunc( BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha );
+        _gl.Enable(EnableCap.Blend);
+        _gl.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
 
         RegisterShaders();
         CompileShadersAndTextures();
 
         AddInputContext();
-
-        // Инициализация глобальных ресурсов, если нужно
     }
 
-    private void OnUpdate( double dt )
+    private void OnUpdate(double dt)
     {
-        _objectManager.Update( _gl, dt );
+        _objectManager.Update(_gl, dt);
     }
 
-    private unsafe void OnRender( double dt )
+    private unsafe void OnRender(double dt)
     {
-        _gl.ClearColor( Color.DarkSlateGray );
-        _gl.Clear( ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit );
+        _gl.ClearColor(Color.DarkSlateGray);
+        _gl.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
-        foreach ( var kv in _shaderStore.AllShaders )
+        foreach (var kv in _shaderStore.AllShaders)
         {
             kv.Value.Use();
-            int viewLoc = _gl.GetUniformLocation( kv.Value.ProgramId, "uView" );
-            int projLoc = _gl.GetUniformLocation( kv.Value.ProgramId, "uProjection" );
+            int viewLoc = _gl.GetUniformLocation(kv.Value.ProgramId, "uView");
+            int projLoc = _gl.GetUniformLocation(kv.Value.ProgramId, "uProjection");
 
             var view = _camera.ViewMatrix;
-            var proj = _camera.ProjectionMatrix( ( float )_window.Size.X / _window.Size.Y );
+            var proj = _camera.ProjectionMatrix((float)_window.Size.X / _window.Size.Y);
 
-            _gl.UniformMatrix4( viewLoc, 1, false, ( float* )&view );
-            _gl.UniformMatrix4( projLoc, 1, false, ( float* )&proj );
+            _gl.UniformMatrix4(viewLoc, 1, false, (float*)&view);
+            _gl.UniformMatrix4(projLoc, 1, false, (float*)&proj);
 
-            ApplyLights( kv.Value );
+            ApplyLights(kv.Value);
         }
 
-        _objectManager.Render( _gl, dt );
+        _objectManager.Render(_gl, dt);
     }
 
-    private void OnFramebufferResize( Vector2D<int> size )
+    private void OnFramebufferResize(Vector2D<int> size)
     {
-        _gl.Viewport( size );
-        _pickingService.UpdateViewport( size.X, size.Y );
+        _gl.Viewport(size);
+        _pickingService.UpdateViewport(size.X, size.Y);
     }
 
     private void OnUnload()
@@ -125,14 +137,14 @@ public class World
 
     private void CompileShadersAndTextures()
     {
-        foreach ( Shader shader in _shaderStore.AllShaders.Values )
+        foreach (Shader shader in _shaderStore.AllShaders.Values)
         {
-            shader.Compile( _gl );
+            shader.Compile(_gl);
         }
 
-        foreach ( Texture texture in _textureStore.AllTextures.Values )
+        foreach (Texture texture in _textureStore.AllTextures.Values)
         {
-            texture.Compile( _gl );
+            texture.Compile(_gl);
         }
 
         InitTextureHandlesBuffer();
@@ -143,22 +155,22 @@ public class World
         List<ulong> handles = [];
 
         var sortedTextures = _textureStore.AllTextures.Values.OrderBy(x => x.TextureId).ToList();
-        handles.AddRange( sortedTextures.Select( x => x.BindlessHandle ) );
+        handles.AddRange(sortedTextures.Select(x => x.BindlessHandle));
 
         ulong[] textureHandles = handles.ToArray();
 
         uint ssbo = _gl.GenBuffer();
-        _gl.BindBuffer( BufferTargetARB.ShaderStorageBuffer, ssbo );
+        _gl.BindBuffer(BufferTargetARB.ShaderStorageBuffer, ssbo);
 
-        fixed ( ulong* ptr = textureHandles )
+        fixed (ulong* ptr = textureHandles)
         {
-            _gl.BufferData( BufferTargetARB.ShaderStorageBuffer,
-                ( nuint )( textureHandles.Length * sizeof( ulong ) ),
+            _gl.BufferData(BufferTargetARB.ShaderStorageBuffer,
+                (nuint)(textureHandles.Length * sizeof(ulong)),
                 ptr,
-                BufferUsageARB.StaticDraw );
+                BufferUsageARB.StaticDraw);
         }
 
-        _gl.BindBufferBase( BufferTargetARB.ShaderStorageBuffer, 0, ssbo );
+        _gl.BindBufferBase(BufferTargetARB.ShaderStorageBuffer, 0, ssbo);
     }
 
     private void AddInputContext()
@@ -173,19 +185,19 @@ public class World
 
         RegisterInputObjects();
 
-        if ( _useMouseCameraMove )
+        if (_useMouseCameraMove)
         {
-            if ( _cameraMode == CameraMode.Fps )
+            if (_cameraMode == CameraMode.Fps)
             {
                 mouse.Cursor.CursorMode = CursorMode.Raw;
             }
 
-            mouse.MouseMove += ( _, delta ) => _camera.ProcessMouseMove( mouse, delta );
+            mouse.MouseMove += (_, delta) => _camera.ProcessMouseMove(mouse, delta);
         }
 
-        mouse.MouseUp += ( _, _ ) => PerformMouseAction( mouse, MouseAction.Up );
-        mouse.MouseDown += ( _, _ ) => PerformMouseAction( mouse, MouseAction.Down );
-        mouse.MouseMove += ( _, _ ) => PerformMouseAction( mouse, MouseAction.Move );
+        mouse.MouseUp += (_, _) => PerformMouseAction(mouse, MouseAction.Up);
+        mouse.MouseDown += (_, _) => PerformMouseAction(mouse, MouseAction.Down);
+        mouse.MouseMove += (_, _) => PerformMouseAction(mouse, MouseAction.Move);
 
         // mouse.MouseMove += (_, delta) => Console.WriteLine(delta);
 
@@ -194,7 +206,7 @@ public class World
 
     private void RegisterInputObjects()
     {
-        foreach ( IKeyboardClickable keyboardClickable in _keyboardClickables )
+        foreach (IKeyboardClickable keyboardClickable in _keyboardClickables)
         {
             keyboardClickable.Keyboard = _keyboard!;
         }
@@ -202,41 +214,41 @@ public class World
 
     private void RegisterShaders()
     {
-        _shaderStore.CreateShader( "picking", "./Picking/picking.vert", "./Picking/picking.frag" );
-        _shaderStore.CreateShader( "text", "./Text/text.vert", "./Text/text.frag" );
-        _textureStore.CreateTexture( "text", "./Text/font.png" );
-        _fontStore.CreateFont( "font", "./Text/font.xml" );
+        _shaderStore.CreateShader("picking", "./Picking/picking.vert", "./Picking/picking.frag");
+        _shaderStore.CreateShader("text", "./Text/text.vert", "./Text/text.frag");
+        _textureStore.CreateTexture("text", "./Text/font.png");
+        _fontStore.CreateFont("font", "./Text/font.xml");
     }
 
-    private uint PerformMouseAction( IMouse mouse, MouseAction action )
+    private uint PerformMouseAction(IMouse mouse, MouseAction action)
     {
         Vector2 mousePos = mouse.Position;
 
-        if ( _useMouseCameraMove && _cameraMode == CameraMode.Fps )
+        if (_useMouseCameraMove && _cameraMode == CameraMode.Fps)
         {
-            mousePos = new Vector2( ( float )_window.Size.X / 2, ( float )_window.Size.Y / 2 );
+            mousePos = new Vector2((float)_window.Size.X / 2, (float)_window.Size.Y / 2);
         }
 
         // Console.WriteLine($"{clickedPosition.X}, {clickedPosition.Y}");
 
         DrawPickingTextures();
 
-        uint clickedId = _pickingService.ReadIdAt( ( int )mousePos.X, ( int )mousePos.Y );
+        uint clickedId = _pickingService.ReadIdAt((int)mousePos.X, (int)mousePos.Y);
 
-        if ( clickedId != 0 )
+        if (clickedId != 0)
         {
             var target = _objectManager.Objects
                 .OfType<IClickable>()
-                .FirstOrDefault( x => x.ColorId == clickedId );
+                .FirstOrDefault(x => x.ColorId == clickedId);
 
-            if ( target != null )
+            if (target != null)
             {
-                if ( _lastActive == null )
+                if (_lastActive == null)
                 {
                     _lastActive = target;
                     target.OnMouseEnter();
                 }
-                else if ( _lastActive.ColorId != clickedId )
+                else if (_lastActive.ColorId != clickedId)
                 {
                     _lastActive?.OnMouseLeave();
                     _lastActive = target;
@@ -244,15 +256,15 @@ public class World
                 }
 
                 // Получаем мировые координаты объекта
-                float objectZ = ( target as RenderableObject )?.Position.Z ?? 0;
+                float objectZ = (target as RenderableObject)?.Position.Z ?? 0;
                 Vector3 worldPos =
-                    _camera.Unproject( mousePos, new Vector2( _window.Size.X, _window.Size.Y ), objectZ );
+                    _camera.Unproject(mousePos, new Vector2(_window.Size.X, _window.Size.Y), objectZ);
 
-                switch ( action )
+                switch (action)
                 {
-                    case MouseAction.Up: target.OnMouseUp( worldPos ); break;
-                    case MouseAction.Down: target.OnMouseDown( worldPos ); break;
-                    case MouseAction.Move: target.OnMouseMove( worldPos ); break;
+                    case MouseAction.Up: target.OnMouseUp(worldPos); break;
+                    case MouseAction.Down: target.OnMouseDown(worldPos); break;
+                    case MouseAction.Move: target.OnMouseMove(worldPos); break;
                 }
             }
         }
@@ -269,63 +281,63 @@ public class World
     {
         // 1. Очищаем FBO для пикинга
         _pickingService.BindForRendering();
-        _gl.ClearColor( 0, 0, 0, 0 );
-        _gl.Clear( ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit );
+        _gl.ClearColor(0, 0, 0, 0);
+        _gl.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
-        var pickingShader = _shaderStore.GetShader( "picking" );
+        var pickingShader = _shaderStore.GetShader("picking");
         pickingShader.Use();
 
         // Передаем общие матрицы камеры
-        pickingShader.SetUniform( "uView", _camera.ViewMatrix );
-        pickingShader.SetUniform( "uProjection", _camera.ProjectionMatrix( ( float )_window.Size.X / _window.Size.Y ) );
+        pickingShader.SetUniform("uView", _camera.ViewMatrix);
+        pickingShader.SetUniform("uProjection", _camera.ProjectionMatrix((float)_window.Size.X / _window.Size.Y));
 
         // 2. Рендерим только кликабельные объекты
-        foreach ( var obj in _objectManager.Objects )
+        foreach (var obj in _objectManager.Objects)
         {
-            if ( obj is IClickable clickable )
+            if (obj is IClickable clickable)
             {
-                Vector3 colorId = _pickingService.IdToColor( clickable.ColorId );
-                pickingShader.SetUniform( "uPickingColor", colorId );
-                obj.OnRenderPicking( _gl, pickingShader );
+                Vector3 colorId = _pickingService.IdToColor(clickable.ColorId);
+                pickingShader.SetUniform("uPickingColor", colorId);
+                obj.OnRenderPicking(_gl, pickingShader);
             }
         }
 
         // Возвращаемся к обычному буферу экрана
-        _gl.BindFramebuffer( FramebufferTarget.Framebuffer, 0 );
+        _gl.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
     }
 
-    private void ApplyLights( Shader shader )
+    private void ApplyLights(Shader shader)
     {
-        var activeLights = _lights.Where( x => x.Enabled ).Take( 8 ).ToList();
-        shader.TrySetUniform( "uLightCount", activeLights.Count );
+        var activeLights = _lights.Where(x => x.Enabled).Take(8).ToList();
+        shader.TrySetUniform("uLightCount", activeLights.Count);
 
-        for ( int i = 0; i < activeLights.Count; i++ )
+        for (int i = 0; i < activeLights.Count; i++)
         {
             LightEntity light = activeLights[i];
             string prefix = $"uLights[{i}]";
 
-            shader.TrySetUniform( $"{prefix}.position", light.Position );
-            shader.TrySetUniform( $"{prefix}.ambient", light.Ambient );
-            shader.TrySetUniform( $"{prefix}.diffuse", light.Diffuse );
-            shader.TrySetUniform( $"{prefix}.specular", light.Specular );
-            shader.TrySetUniform( $"{prefix}.intensity", light.Intensity );
-            shader.TrySetUniform( $"{prefix}.constant", light.Constant );
-            shader.TrySetUniform( $"{prefix}.linear", light.Linear );
-            shader.TrySetUniform( $"{prefix}.quadratic", light.Quadratic );
+            shader.TrySetUniform($"{prefix}.position", light.Position);
+            shader.TrySetUniform($"{prefix}.ambient", light.Ambient);
+            shader.TrySetUniform($"{prefix}.diffuse", light.Diffuse);
+            shader.TrySetUniform($"{prefix}.specular", light.Specular);
+            shader.TrySetUniform($"{prefix}.intensity", light.Intensity);
+            shader.TrySetUniform($"{prefix}.constant", light.Constant);
+            shader.TrySetUniform($"{prefix}.linear", light.Linear);
+            shader.TrySetUniform($"{prefix}.quadratic", light.Quadratic);
         }
     }
 
     // Публичные методы для добавления/удаления
-    public void AddObject( UpdateableObject obj )
+    public void AddObject(UpdateableObject obj)
     {
-        if ( obj is LightEntity lightEntity )
+        if (obj is LightEntity lightEntity)
         {
-            _lights.Add( lightEntity );
+            _lights.Add(lightEntity);
         }
 
-        if ( obj is RenderableObject renderable )
+        if (obj is RenderableObject renderable)
         {
-            _objectManager.Add( renderable );
+            _objectManager.Add(renderable);
         }
         else
         {
@@ -333,16 +345,16 @@ public class World
         }
 
 
-        if ( obj is IClickable clickable )
+        if (obj is IClickable clickable)
         {
-            _pickingService.Register( clickable );
+            _pickingService.Register(clickable);
         }
 
-        if ( obj is IKeyboardClickable keyboardClickable )
+        if (obj is IKeyboardClickable keyboardClickable)
         {
-            if ( _keyboard is null )
+            if (_keyboard is null)
             {
-                _keyboardClickables.Add( keyboardClickable );
+                _keyboardClickables.Add(keyboardClickable);
             }
             else
             {
@@ -351,16 +363,21 @@ public class World
         }
     }
 
-    public void RemoveObject( RenderableObject obj ) => _objectManager.Remove( obj );
+    public void RemoveObject(RenderableObject obj) => _objectManager.Remove(obj);
 
-    public void AddLight( LightEntity light )
+    public void AddLight(LightEntity light)
     {
-        _lights.Add( light );
+        _lights.Add(light);
     }
 
-    public bool RemoveLight( LightEntity light )
+    public bool RemoveLight(LightEntity light)
     {
-        return _lights.Remove( light );
+        return _lights.Remove(light);
+    }
+
+    public void SetCameraViewPoint(Vector3 point)
+    {
+        _camera.SetViewPoint(point);
     }
 
     public void Run() => _window.Run();

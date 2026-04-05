@@ -1,64 +1,41 @@
-﻿using Silk.NET.Assimp;
+using Silk.NET.Assimp;
 
 namespace SilkOpenGL.Model;
 
 public static unsafe class ModelLoader
 {
+    private const int VertexStride = 8;
+
     public static ModelData Load( string filePath )
     {
-        if ( string.IsNullOrWhiteSpace( filePath ) )
+        ArgumentException.ThrowIfNullOrWhiteSpace( filePath );
+
+        string modelPath = Path.GetFullPath( filePath );
+        if ( !System.IO.File.Exists( modelPath ) )
         {
-            throw new ArgumentException( "Model path cannot be empty.", nameof( filePath ) );
+            throw new FileNotFoundException( $"Model file not found: {modelPath}", modelPath );
         }
 
-        string fullPath = Path.GetFullPath( filePath );
-        if ( !System.IO.File.Exists( fullPath ) )
-        {
-            throw new FileNotFoundException( $"Model file not found: {fullPath}", fullPath );
-        }
-
-        var assimp = Assimp.GetApi();
-        uint flags = ( uint )(
-            PostProcessSteps.Triangulate |
-            PostProcessSteps.GenerateNormals |
-            PostProcessSteps.FlipUVs |
-            PostProcessSteps.PreTransformVertices );
-
+        Assimp assimp = Assimp.GetApi();
         Scene* scene = null;
 
         try
         {
-            scene = assimp.ImportFile( fullPath, flags );
+            scene = assimp.ImportFile( modelPath, GetImportFlags() );
+            ValidateScene( assimp, scene, modelPath );
 
-            if ( scene == null || scene->MRootNode == null || ( scene->MFlags & ( uint )SceneFlags.Incomplete ) != 0 )
-            {
-                throw new InvalidOperationException( $"Failed to load model: {fullPath}" );
-            }
+            string modelDirectory = Path.GetDirectoryName( modelPath ) ?? string.Empty;
+            Dictionary<uint, string?> materialTextures = BuildMaterialTextureMap( assimp, scene, modelDirectory );
+            List<ModelMeshData> meshes = [];
 
-            if ( scene->MNumMeshes == 0 || scene->MMeshes == null )
-            {
-                throw new InvalidOperationException( $"Model does not contain any meshes: {fullPath}" );
-            }
-
-            List<ModelMeshData> meshes = new( ( int )scene->MNumMeshes );
-
-            for ( uint meshIndex = 0; meshIndex < scene->MNumMeshes; meshIndex++ )
-            {
-                Mesh* mesh = scene->MMeshes[meshIndex];
-                if ( mesh == null )
-                {
-                    continue;
-                }
-
-                meshes.Add( ReadMesh( mesh, meshIndex ) );
-            }
+            ProcessNode( scene->MRootNode, scene, materialTextures, meshes );
 
             if ( meshes.Count == 0 )
             {
-                throw new InvalidOperationException( $"No readable meshes were found in: {fullPath}" );
+                throw new InvalidOperationException( $"No meshes were loaded from model: {modelPath}" );
             }
 
-            return new ModelData( fullPath, meshes );
+            return new ModelData( modelPath, meshes );
         }
         finally
         {
@@ -71,82 +48,218 @@ public static unsafe class ModelLoader
         }
     }
 
-    public static void Load3DS( string filePath, out float[] vertexData, out uint[] indexData )
+    private static uint GetImportFlags()
     {
-        ModelData model = Load( filePath );
-
-        List<float> vertices = [];
-        List<uint> indices = [];
-        uint vertexOffset = 0;
-
-        foreach ( ModelMeshData mesh in model.Meshes )
-        {
-            vertices.AddRange( mesh.Vertices );
-
-            foreach ( uint index in mesh.Indices )
-            {
-                indices.Add( index + vertexOffset );
-            }
-
-            vertexOffset += ( uint )( mesh.Vertices.Length / mesh.VertexStride );
-        }
-
-        vertexData = vertices.ToArray();
-        indexData = indices.ToArray();
+        return ( uint )(
+            PostProcessSteps.Triangulate |
+            PostProcessSteps.FlipUVs |
+            PostProcessSteps.JoinIdenticalVertices |
+            PostProcessSteps.GenerateSmoothNormals |
+            PostProcessSteps.ImproveCacheLocality |
+            PostProcessSteps.FindInvalidData |
+            PostProcessSteps.ValidateDataStructure );
     }
 
-    private static ModelMeshData ReadMesh( Mesh* mesh, uint meshIndex )
+    private static void ValidateScene( Assimp assimp, Scene* scene, string modelPath )
     {
-        List<float> vertices = new( ( int )mesh->MNumVertices * 8 );
-        List<uint> indices = new( ( int )mesh->MNumFaces * 3 );
+        if ( scene != null && scene->MRootNode != null && ( scene->MFlags & ( uint )SceneFlags.Incomplete ) == 0 )
+        {
+            return;
+        }
 
+        string importerError = assimp.GetErrorStringS();
+        if ( string.IsNullOrWhiteSpace( importerError ) )
+        {
+            importerError = "Unknown Assimp import error.";
+        }
+
+        throw new InvalidOperationException( $"Failed to load model '{modelPath}'. {importerError}" );
+    }
+
+    private static Dictionary<uint, string?> BuildMaterialTextureMap(
+        Assimp assimp,
+        Scene* scene,
+        string modelDirectory )
+    {
+        Dictionary<uint, string?> textures = [];
+        if ( scene->MMaterials == null )
+        {
+            return textures;
+        }
+
+        for ( uint materialIndex = 0; materialIndex < scene->MNumMaterials; materialIndex++ )
+        {
+            Silk.NET.Assimp.Material* material = scene->MMaterials[materialIndex];
+            textures[materialIndex] = ResolveTexturePath( assimp, material, modelDirectory );
+        }
+
+        return textures;
+    }
+
+    private static void ProcessNode(
+        Node* node,
+        Scene* scene,
+        IReadOnlyDictionary<uint, string?> materialTextures,
+        ICollection<ModelMeshData> meshes )
+    {
+        if ( node == null )
+        {
+            return;
+        }
+
+        for ( uint meshSlot = 0; meshSlot < node->MNumMeshes; meshSlot++ )
+        {
+            uint meshIndex = node->MMeshes[meshSlot];
+            Mesh* mesh = scene->MMeshes[meshIndex];
+            if ( mesh == null )
+            {
+                continue;
+            }
+
+            meshes.Add( ProcessMesh( mesh, meshIndex, materialTextures ) );
+        }
+
+        for ( uint childIndex = 0; childIndex < node->MNumChildren; childIndex++ )
+        {
+            ProcessNode( node->MChildren[childIndex], scene, materialTextures, meshes );
+        }
+    }
+
+    private static ModelMeshData ProcessMesh(
+        Mesh* mesh,
+        uint meshIndex,
+        IReadOnlyDictionary<uint, string?> materialTextures )
+    {
+        if ( mesh->MVertices == null || mesh->MNumVertices == 0 )
+        {
+            throw new InvalidOperationException( $"Mesh {meshIndex} does not contain any vertices." );
+        }
+
+        float[] vertices = ExtractVertices( mesh );
+        uint[] indices = ExtractIndices( mesh, meshIndex );
+        materialTextures.TryGetValue( mesh->MMaterialIndex, out string? textureKey );
+
+        return new ModelMeshData(
+            GetMeshName( mesh, meshIndex ),
+            vertices,
+            indices,
+            mesh->MMaterialIndex,
+            textureKey: textureKey );
+    }
+
+    private static float[] ExtractVertices( Mesh* mesh )
+    {
+        float[] vertices = new float[mesh->MNumVertices * VertexStride];
         bool hasNormals = mesh->MNormals != null;
-        bool hasUvChannel = mesh->MTextureCoords[0] != null;
+        bool hasTextureCoords = mesh->MTextureCoords[0] != null;
 
         for ( uint vertexIndex = 0; vertexIndex < mesh->MNumVertices; vertexIndex++ )
         {
-            vertices.Add( mesh->MVertices[vertexIndex].X );
-            vertices.Add( mesh->MVertices[vertexIndex].Y );
-            vertices.Add( mesh->MVertices[vertexIndex].Z );
+            int offset = ( int )vertexIndex * VertexStride;
+
+            vertices[offset] = mesh->MVertices[vertexIndex].X;
+            vertices[offset + 1] = mesh->MVertices[vertexIndex].Y;
+            vertices[offset + 2] = mesh->MVertices[vertexIndex].Z;
 
             if ( hasNormals )
             {
-                vertices.Add( mesh->MNormals[vertexIndex].X );
-                vertices.Add( mesh->MNormals[vertexIndex].Y );
-                vertices.Add( mesh->MNormals[vertexIndex].Z );
-            }
-            else
-            {
-                vertices.Add( 0f );
-                vertices.Add( 0f );
-                vertices.Add( 0f );
+                vertices[offset + 3] = mesh->MNormals[vertexIndex].X;
+                vertices[offset + 4] = mesh->MNormals[vertexIndex].Y;
+                vertices[offset + 5] = mesh->MNormals[vertexIndex].Z;
             }
 
-            if ( hasUvChannel )
+            if ( hasTextureCoords )
             {
-                vertices.Add( mesh->MTextureCoords[0][vertexIndex].X );
-                vertices.Add( mesh->MTextureCoords[0][vertexIndex].Y );
-            }
-            else
-            {
-                vertices.Add( 0f );
-                vertices.Add( 0f );
+                vertices[offset + 6] = mesh->MTextureCoords[0][vertexIndex].X;
+                vertices[offset + 7] = mesh->MTextureCoords[0][vertexIndex].Y;
             }
         }
+
+        return vertices;
+    }
+
+    private static uint[] ExtractIndices( Mesh* mesh, uint meshIndex )
+    {
+        List<uint> indices = new( ( int )mesh->MNumFaces * 3 );
 
         for ( uint faceIndex = 0; faceIndex < mesh->MNumFaces; faceIndex++ )
         {
             Face face = mesh->MFaces[faceIndex];
-            for ( uint indexIndex = 0; indexIndex < face.MNumIndices; indexIndex++ )
+            if ( face.MNumIndices != 3 )
             {
-                indices.Add( face.MIndices[indexIndex] );
+                throw new InvalidOperationException(
+                    $"Mesh '{meshIndex}' contains a non-triangle face at index {faceIndex}." );
+            }
+
+            for ( uint index = 0; index < face.MNumIndices; index++ )
+            {
+                indices.Add( face.MIndices[index] );
             }
         }
 
-        return new ModelMeshData(
-            $"Mesh_{meshIndex}",
-            vertices.ToArray(),
-            indices.ToArray(),
-            mesh->MMaterialIndex );
+        return indices.ToArray();
+    }
+
+    private static string GetMeshName( Mesh* mesh, uint meshIndex )
+    {
+        string meshName = mesh->MName.AsString;
+        return string.IsNullOrWhiteSpace( meshName ) ? $"Mesh_{meshIndex}" : meshName;
+    }
+
+    private static string? ResolveTexturePath(
+        Assimp assimp,
+        Silk.NET.Assimp.Material* material,
+        string modelDirectory )
+    {
+        if ( material == null )
+        {
+            return null;
+        }
+
+        return TryGetMaterialTexture( assimp, material, TextureType.Diffuse, modelDirectory ) ??
+               TryGetMaterialTexture( assimp, material, TextureType.BaseColor, modelDirectory );
+    }
+
+    private static string? TryGetMaterialTexture(
+        Assimp assimp,
+        Silk.NET.Assimp.Material* material,
+        TextureType textureType,
+        string modelDirectory )
+    {
+        if ( assimp.GetMaterialTextureCount( material, textureType ) == 0 )
+        {
+            return null;
+        }
+
+        AssimpString texturePath = default;
+        Return status = assimp.GetMaterialTexture(
+            material,
+            textureType,
+            0,
+            &texturePath,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null );
+
+        if ( status != Return.Success )
+        {
+            return null;
+        }
+
+        string? rawTexturePath = texturePath.AsString;
+        if ( string.IsNullOrWhiteSpace( rawTexturePath ) || rawTexturePath.StartsWith( '*' ) )
+        {
+            return null;
+        }
+
+        string normalizedRelativePath = rawTexturePath
+            .Replace( '\\', Path.DirectorySeparatorChar )
+            .Replace( '/', Path.DirectorySeparatorChar );
+
+        string absolutePath = Path.GetFullPath( Path.Combine( modelDirectory, normalizedRelativePath ) );
+        return System.IO.File.Exists( absolutePath ) ? absolutePath : null;
     }
 }

@@ -14,6 +14,7 @@ public class Texture : IDisposable
     public ulong BindlessHandle { get; private set; }
 
     public int TextureId { get; private set; }
+    public bool IsCompiled => _isCompiled;
 
     private ArbBindlessTexture _bindlessExt;
     private bool _isResident;

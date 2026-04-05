@@ -51,12 +51,18 @@ public class ModelObject : RenderableObject
             string? materialKey =
                 _useDefaultMaterial ? meshData.MaterialKey ?? _defaultMaterialKey : meshData.MaterialKey;
 
+            if ( textureKey != null && !textureStore.AllTextures.ContainsKey( textureKey ) && File.Exists( textureKey ) )
+            {
+                textureStore.CreateTexture( textureKey, textureKey );
+            }
+
             Texture? texture = textureKey != null ? textureStore.GetTexture( textureKey ) : null;
             Material? material = materialKey != null ? materialStore.GetMaterial( materialKey ) : null;
 
             _meshes.Add( new RenderableMesh( _gl, meshData, texture, material ) );
         }
 
+        (_vertices, _indices) = BuildCombinedGeometry( _modelData.Meshes );
         _isInitialized = true;
     }
 
@@ -107,13 +113,26 @@ public class ModelObject : RenderableObject
         }
 
         _meshes.Clear();
+        _vertices = [];
+        _indices = [];
+
+        base.OnClose();
     }
 
     private void BindMeshResources( RenderableMesh mesh )
     {
         if ( mesh.Texture != null )
         {
+            mesh.Texture.Bind();
             _shader.TrySetUniform( "uTextureId", mesh.Texture.TextureId );
+            _shader.TrySetUniform( "uHandle", mesh.Texture.TextureId );
+            _shader.TrySetUniform( "uHasTexture", 1 );
+        }
+        else
+        {
+            _shader.TrySetUniform( "uTextureId", 0 );
+            _shader.TrySetUniform( "uHandle", 0 );
+            _shader.TrySetUniform( "uHasTexture", 0 );
         }
 
         Material? material = mesh.Material;
@@ -181,6 +200,27 @@ public class ModelObject : RenderableObject
         _shader.TrySetUniform( "uMaterial.hasMetallicMap", 0 );
         _shader.TrySetUniform( "uMaterial.hasRoughnessMap", 0 );
         _shader.TrySetUniform( "uMaterial.hasAoMap", 0 );
+    }
+
+    private static ( float[] Vertices, uint[] Indices ) BuildCombinedGeometry( IReadOnlyList<ModelMeshData> meshes )
+    {
+        List<float> vertices = [];
+        List<uint> indices = [];
+        uint vertexOffset = 0;
+
+        foreach ( ModelMeshData mesh in meshes )
+        {
+            vertices.AddRange( mesh.Vertices );
+
+            foreach ( uint index in mesh.Indices )
+            {
+                indices.Add( index + vertexOffset );
+            }
+
+            vertexOffset += ( uint )( mesh.Vertices.Length / mesh.VertexStride );
+        }
+
+        return ( vertices.ToArray(), indices.ToArray() );
     }
 
     private sealed class RenderableMesh : IDisposable

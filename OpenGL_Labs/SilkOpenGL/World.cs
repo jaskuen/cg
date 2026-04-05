@@ -33,6 +33,7 @@ public class World
     private IClickable? _lastActive;
 
     private bool _useMouseCameraMove = false;
+    private uint _textureHandlesSsbo;
 
     public World(
         WindowOptions windowOptions,
@@ -59,6 +60,11 @@ public class World
         _window.Render += OnRender;
         _window.FramebufferResize += OnFramebufferResize;
         _window.Closing += OnUnload;
+    }
+
+    public World(WindowOptions windowOptions, StoreManager storeManager)
+        : this(windowOptions, storeManager, CameraMode.Fps)
+    {
     }
 
     public World(WindowOptions windowOptions, StoreManager storeManager, CameraObject? camera = null, bool useMouseCameraMove = false)
@@ -103,6 +109,7 @@ public class World
     {
         _gl.ClearColor(Color.DarkSlateGray);
         _gl.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+        EnsureTextureResources();
 
         foreach (var kv in _shaderStore.AllShaders)
         {
@@ -131,6 +138,12 @@ public class World
     private void OnUnload()
     {
         _objectManager.DisposeAll();
+        if (_textureHandlesSsbo != 0)
+        {
+            _gl.DeleteBuffer(_textureHandlesSsbo);
+            _textureHandlesSsbo = 0;
+        }
+
         _shaderStore.Dispose();
         _textureStore.Dispose();
     }
@@ -142,12 +155,19 @@ public class World
             shader.Compile(_gl);
         }
 
-        foreach (Texture texture in _textureStore.AllTextures.Values)
+        EnsureTextureResources();
+    }
+
+    private void EnsureTextureResources()
+    {
+        bool compiledAny = _textureStore.CompilePending(_gl);
+        if (!compiledAny && !_textureStore.NeedsHandleUpload())
         {
-            texture.Compile(_gl);
+            return;
         }
 
         InitTextureHandlesBuffer();
+        _textureStore.MarkHandlesUploaded();
     }
 
     private unsafe void InitTextureHandlesBuffer()
@@ -159,8 +179,13 @@ public class World
 
         ulong[] textureHandles = handles.ToArray();
 
-        uint ssbo = _gl.GenBuffer();
-        _gl.BindBuffer(BufferTargetARB.ShaderStorageBuffer, ssbo);
+        if (_textureHandlesSsbo != 0)
+        {
+            _gl.DeleteBuffer(_textureHandlesSsbo);
+        }
+
+        _textureHandlesSsbo = _gl.GenBuffer();
+        _gl.BindBuffer(BufferTargetARB.ShaderStorageBuffer, _textureHandlesSsbo);
 
         fixed (ulong* ptr = textureHandles)
         {
@@ -170,7 +195,7 @@ public class World
                 BufferUsageARB.StaticDraw);
         }
 
-        _gl.BindBufferBase(BufferTargetARB.ShaderStorageBuffer, 0, ssbo);
+        _gl.BindBufferBase(BufferTargetARB.ShaderStorageBuffer, 0, _textureHandlesSsbo);
     }
 
     private void AddInputContext()

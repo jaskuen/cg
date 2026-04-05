@@ -79,7 +79,18 @@ public abstract class RenderableObject : UpdateableObject, IDisposable
     {
         if (_texture != null)
         {
+            _texture.Bind();
+            _shader.TrySetUniform("uTexture", 0);
             _shader.TrySetUniform("uTextureId", _texture.TextureId);
+            _shader.TrySetUniform("uHandle", _texture.TextureId);
+            _shader.TrySetUniform("uHasTexture", 1);
+        }
+        else
+        {
+            _shader.TrySetUniform("uTexture", 0);
+            _shader.TrySetUniform("uTextureId", 0);
+            _shader.TrySetUniform("uHandle", 0);
+            _shader.TrySetUniform("uHasTexture", 0);
         }
 
         if (_material != null)

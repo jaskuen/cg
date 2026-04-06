@@ -13,6 +13,8 @@ public class CameraObject
     public Vector3 Up { get; private set; } = Vector3.UnitY;
     public Vector3 Target { get; private set; } = Vector3.Zero;
     public CameraMode Mode { get; private set; } = CameraMode.Fps;
+    public float NearPlane { get; set; } = 0.1f;
+    public float FarPlane { get; set; } = 100f;
 
     private float _yaw = -90f;
     private float _pitch = 0f;
@@ -24,7 +26,7 @@ public class CameraObject
     public Matrix4x4 ViewMatrix => Matrix4x4.CreateLookAt(Position, Position + Front, Up);
 
     public Matrix4x4 ProjectionMatrix(float aspectRatio)
-        => Matrix4x4.CreatePerspectiveFieldOfView(DegreesToRadians(_fov), aspectRatio, 0.1f, 100f);
+        => Matrix4x4.CreatePerspectiveFieldOfView(DegreesToRadians(_fov), aspectRatio, NearPlane, FarPlane);
 
     public virtual void ProcessKeyboard(IKeyboard keyboard, double dt)
     {

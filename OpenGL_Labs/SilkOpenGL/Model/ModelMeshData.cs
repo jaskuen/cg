@@ -1,3 +1,5 @@
+using GLPrimitiveType = Silk.NET.OpenGL.PrimitiveType;
+
 namespace SilkOpenGL.Model;
 
 public sealed class ModelMeshData
@@ -6,6 +8,8 @@ public sealed class ModelMeshData
         string name,
         float[] vertices,
         uint[] indices,
+        GLPrimitiveType primitiveType = GLPrimitiveType.Triangles,
+        int indicesPerPrimitive = 3,
         uint materialIndex = 0,
         string? materialKey = null,
         string? textureKey = null )
@@ -13,6 +17,8 @@ public sealed class ModelMeshData
         Name = name;
         Vertices = vertices;
         Indices = indices;
+        PrimitiveType = primitiveType;
+        IndicesPerPrimitive = indicesPerPrimitive;
         MaterialIndex = materialIndex;
         MaterialKey = materialKey;
         TextureKey = textureKey;
@@ -24,6 +30,10 @@ public sealed class ModelMeshData
     public float[] Vertices { get; }
 
     public uint[] Indices { get; }
+
+    public GLPrimitiveType PrimitiveType { get; }
+
+    public int IndicesPerPrimitive { get; }
 
     public uint MaterialIndex { get; }
 

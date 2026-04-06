@@ -2,7 +2,6 @@
 
 using System.Numerics;
 using Lab4.KleinBottle.Objects;
-using Silk.NET.Assimp;
 using Silk.NET.Maths;
 using Silk.NET.Windowing;
 using SilkOpenGL;

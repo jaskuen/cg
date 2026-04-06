@@ -15,7 +15,6 @@ public class ObjectManager
     private readonly FontStore _fontStore;
     private readonly MaterialStore _materialStore;
 
-    // Для оптимизации: группировка по шейдерам (опционально, добавь позже)
     private Dictionary<string, List<RenderableObject>> _objectsByShader = new();
 
     public ObjectManager(ShaderStore shaderStore, TextureStore textureStore, FontStore fontStore, MaterialStore materialStore)
@@ -28,7 +27,7 @@ public class ObjectManager
 
     public void Add(RenderableObject obj)
     {
-        _toAdd.Add(obj); // Отложенное добавление — безопасно из любого потока
+        _toAdd.Add(obj);
     }
 
     public void Remove(RenderableObject obj)
@@ -39,7 +38,7 @@ public class ObjectManager
 
     public void Update(GL gl, double dt)
     {
-        ProcessPending(gl); // Сначала добавляем/удаляем
+        ProcessPending(gl);
 
         foreach (var obj in _objects)
         {
@@ -49,7 +48,6 @@ public class ObjectManager
 
     public void Render(GL gl, double dt)
     {
-        // Группировка по шейдерам
         var groups = _objects.GroupBy(obj => obj.ShaderKey);
         foreach (var group in groups)
         {
@@ -58,8 +56,13 @@ public class ObjectManager
 
             foreach (var obj in group)
             {
-                obj.BindResources(); // Bind текстуры, uniforms
-                obj.Render(dt); // Только draw call
+                if (obj.ClearDepthBeforeRender)
+                {
+                    gl.Clear(ClearBufferMask.DepthBufferBit);
+                }
+
+                obj.BindResources();
+                obj.Render(dt);
             }
         }
     }
@@ -71,26 +74,21 @@ public class ObjectManager
     {
         foreach (var obj in _toAdd)
         {
-            obj.Init(_shaderStore, _textureStore, _materialStore, gl); // Инициализация ресурсов
+            obj.Init(_shaderStore, _textureStore, _materialStore, gl);
 
             if (obj is IText textObj)
             {
                 textObj.SetMetadata(_fontStore);
             }
-            
-            _objects.Add(obj);
 
-            // Если используешь группировку:
-            // if (!_objectsByShader.ContainsKey(obj.ShaderKey)) _objectsByShader[obj.ShaderKey] = new();
-            // _objectsByShader[obj.ShaderKey].Add(obj);
+            _objects.Add(obj);
         }
 
         _toAdd.Clear();
 
         foreach (var obj in _toRemove)
         {
-            obj.OnClose(); // Очистка ресурсов
-            // _objectsByShader[obj.ShaderKey]?.Remove(obj);
+            obj.OnClose();
         }
 
         _toRemove.Clear();

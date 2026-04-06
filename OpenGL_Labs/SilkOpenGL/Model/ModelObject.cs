@@ -12,7 +12,21 @@ public class ModelObject : RenderableObject
     private readonly string? _defaultTextureKey;
     private readonly string? _defaultMaterialKey;
     private readonly bool _useDefaultMaterial;
-    private bool _isInitialized;
+    private TextureStore? _textureStore;
+    private MaterialStore? _materialStore;
+
+    public bool EnableFaceCulling { get; set; }
+    public GLEnum CullFaceMode { get; set; } = GLEnum.Back;
+    public FrontFaceDirection FrontFaceDirection { get; set; } = FrontFaceDirection.Ccw;
+    public bool EnableDepthWrite { get; set; } = true;
+    public int? RenderOnlyMeshIndex { get; set; }
+    public bool EnablePolygonOffsetFill { get; set; }
+    public float PolygonOffsetFactor { get; set; } = 1.0f;
+    public float PolygonOffsetUnits { get; set; } = 1.0f;
+    public bool RenderWireframe { get; set; }
+    public ISet<int> WireframeMeshIndices { get; } = new HashSet<int>();
+    public IDictionary<int, Vector3> MeshPositionOffsets { get; } = new Dictionary<int, Vector3>();
+    public IDictionary<int, float> MeshVertexZDebugSteps { get; } = new Dictionary<int, float>();
 
     public ModelObject( string shaderKey, ModelData modelData ) : base( shaderKey )
     {
@@ -37,37 +51,52 @@ public class ModelObject : RenderableObject
 
     public override void Init( ShaderStore shaderStore, TextureStore textureStore, MaterialStore materialStore, GL gl )
     {
-        if ( _isInitialized )
-        {
-            return;
-        }
-
-        _gl = gl;
-        _shader = shaderStore.GetShader( ShaderKey );
-
-        foreach ( ModelMeshData meshData in _modelData.Meshes )
-        {
-            string? textureKey = _useDefaultMaterial ? null : meshData.TextureKey ?? _defaultTextureKey;
-            string? materialKey =
-                _useDefaultMaterial ? meshData.MaterialKey ?? _defaultMaterialKey : meshData.MaterialKey;
-
-            if ( textureKey != null && !textureStore.AllTextures.ContainsKey( textureKey ) && File.Exists( textureKey ) )
-            {
-                textureStore.CreateTexture( textureKey, textureKey );
-            }
-
-            Texture? texture = textureKey != null ? textureStore.GetTexture( textureKey ) : null;
-            Material? material = materialKey != null ? materialStore.GetMaterial( materialKey ) : null;
-
-            _meshes.Add( new RenderableMesh( _gl, meshData, texture, material ) );
-        }
-
-        (_vertices, _indices) = BuildCombinedGeometry( _modelData.Meshes );
-        _isInitialized = true;
+        _textureStore = textureStore;
+        _materialStore = materialStore;
+        base.Init( shaderStore, textureStore, materialStore, gl );
     }
 
     protected override void OnInit()
     {
+        for ( int meshIndex = 0; meshIndex < _modelData.Meshes.Count; meshIndex++ )
+        {
+            ModelMeshData meshData = _modelData.Meshes[meshIndex];
+            string? textureKey = _useDefaultMaterial ? null : meshData.TextureKey ?? _defaultTextureKey;
+            string? materialKey =
+                _useDefaultMaterial ? meshData.MaterialKey ?? _defaultMaterialKey : meshData.MaterialKey;
+
+            if ( textureKey != null &&
+                 _textureStore != null &&
+                 !_textureStore.AllTextures.ContainsKey( textureKey ) &&
+                 File.Exists( textureKey ) )
+            {
+                _textureStore.CreateTexture( textureKey, textureKey );
+            }
+
+            Texture? texture =
+                textureKey != null && _textureStore != null && _textureStore.AllTextures.ContainsKey( textureKey )
+                    ? _textureStore.GetTexture( textureKey )
+                    : null;
+            Material? material =
+                materialKey != null && _materialStore != null && _materialStore.AllMaterials.ContainsKey( materialKey )
+                    ? _materialStore.GetMaterial( materialKey )
+                    : null;
+
+            ModelMeshData meshToRender = meshData;
+            if ( MeshVertexZDebugSteps.TryGetValue( meshIndex, out float zStep ) && zStep != 0f )
+            {
+                meshToRender = CreateDebugZSteppedMesh( meshData, zStep );
+            }
+
+            _meshes.Add( new RenderableMesh( _gl, meshToRender, texture, material ) );
+        }
+
+        (_vertices, _indices) = BuildCombinedGeometry( _modelData.Meshes );
+    }
+
+    public override void BindResources()
+    {
+        // ModelObject binds all mesh state explicitly during OnRender.
     }
 
     public override void OnUpdate( double dt )
@@ -76,21 +105,34 @@ public class ModelObject : RenderableObject
 
     public override unsafe void OnRender( double dt )
     {
-        _gl.Enable( EnableCap.DepthTest );
-
-        _shader.Use();
-        _shader.SetUniform( "uModel", _transform.ModelMatrix );
-
-        Matrix4x4.Invert( _transform.ModelMatrix, out Matrix4x4 inverseModel );
-        Matrix4x4 normalMatrix = Matrix4x4.Transpose( inverseModel );
-        _shader.TrySetUniform( "uNormalMatrix", normalMatrix );
-
-        foreach ( RenderableMesh mesh in _meshes )
+        for ( int meshIndex = 0; meshIndex < _meshes.Count; meshIndex++ )
         {
+            if ( RenderOnlyMeshIndex.HasValue && RenderOnlyMeshIndex.Value != meshIndex )
+            {
+                continue;
+            }
+
+            RenderableMesh mesh = _meshes[meshIndex];
+            _gl.Enable( EnableCap.DepthTest );
+            bool renderMeshWireframe = RenderWireframe || WireframeMeshIndices.Contains( meshIndex );
+            ApplyRenderState( renderMeshWireframe );
+            _gl.DepthMask( EnableDepthWrite );
+
+            Matrix4x4 meshModel = GetMeshModelMatrix( meshIndex );
+            Matrix4x4.Invert( meshModel, out Matrix4x4 inverseModel );
+            Matrix4x4 normalMatrix = Matrix4x4.Transpose( inverseModel );
+
+            _shader.Use();
+            _shader.SetUniform( "uModel", meshModel );
+            _shader.TrySetUniform( "uNormalMatrix", normalMatrix );
             mesh.Bind();
+            ResetMaterialUniforms();
             BindMeshResources( mesh );
-            _gl.DrawElements( PrimitiveType.Triangles, ( uint )mesh.IndexCount, DrawElementsType.UnsignedInt, null );
+            _gl.DrawElements( mesh.PrimitiveType, ( uint )mesh.IndexCount, DrawElementsType.UnsignedInt, null );
         }
+
+        RestoreRenderState();
+        _gl.DepthMask( true );
     }
 
     public override unsafe void OnRenderPicking( GL gl, Shader pickingShader )
@@ -98,10 +140,16 @@ public class ModelObject : RenderableObject
         pickingShader.Use();
         pickingShader.SetUniform( "uModel", _transform.ModelMatrix );
 
-        foreach ( RenderableMesh mesh in _meshes )
+        for ( int meshIndex = 0; meshIndex < _meshes.Count; meshIndex++ )
         {
+            if ( RenderOnlyMeshIndex.HasValue && RenderOnlyMeshIndex.Value != meshIndex )
+            {
+                continue;
+            }
+
+            RenderableMesh mesh = _meshes[meshIndex];
             mesh.Bind();
-            gl.DrawElements( PrimitiveType.Triangles, ( uint )mesh.IndexCount, DrawElementsType.UnsignedInt, null );
+            gl.DrawElements( mesh.PrimitiveType, ( uint )mesh.IndexCount, DrawElementsType.UnsignedInt, null );
         }
     }
 
@@ -124,12 +172,15 @@ public class ModelObject : RenderableObject
         if ( mesh.Texture != null )
         {
             mesh.Texture.Bind();
+            _shader.TrySetUniform( "uTexture", 0 );
             _shader.TrySetUniform( "uTextureId", mesh.Texture.TextureId );
             _shader.TrySetUniform( "uHandle", mesh.Texture.TextureId );
             _shader.TrySetUniform( "uHasTexture", 1 );
         }
         else
         {
+            _gl.BindTexture( TextureTarget.Texture2D, 0 );
+            _shader.TrySetUniform( "uTexture", 0 );
             _shader.TrySetUniform( "uTextureId", 0 );
             _shader.TrySetUniform( "uHandle", 0 );
             _shader.TrySetUniform( "uHasTexture", 0 );
@@ -138,7 +189,6 @@ public class ModelObject : RenderableObject
         Material? material = mesh.Material;
         if ( material == null )
         {
-            ResetMaterialUniforms();
             return;
         }
 
@@ -195,11 +245,102 @@ public class ModelObject : RenderableObject
 
     private void ResetMaterialUniforms()
     {
+        _gl.BindTexture( TextureTarget.Texture2D, 0 );
+        _shader.TrySetUniform( "uTexture", 0 );
+        _shader.TrySetUniform( "uTextureId", 0 );
+        _shader.TrySetUniform( "uHandle", 0 );
+        _shader.TrySetUniform( "uHasTexture", 0 );
+        _shader.TrySetUniform( "uMaterial.albedoMap", 0 );
+        _shader.TrySetUniform( "uMaterial.normalMap", 0 );
+        _shader.TrySetUniform( "uMaterial.metallicMap", 0 );
+        _shader.TrySetUniform( "uMaterial.roughnessMap", 0 );
+        _shader.TrySetUniform( "uMaterial.aoMap", 0 );
         _shader.TrySetUniform( "uMaterial.hasAlbedoMap", 0 );
         _shader.TrySetUniform( "uMaterial.hasNormalMap", 0 );
         _shader.TrySetUniform( "uMaterial.hasMetallicMap", 0 );
         _shader.TrySetUniform( "uMaterial.hasRoughnessMap", 0 );
         _shader.TrySetUniform( "uMaterial.hasAoMap", 0 );
+    }
+
+    private void ApplyRenderState( bool renderWireframe )
+    {
+        if ( EnableFaceCulling )
+        {
+            _gl.Enable( EnableCap.CullFace );
+            _gl.FrontFace( FrontFaceDirection );
+            _gl.CullFace( CullFaceMode );
+        }
+        else
+        {
+            _gl.Disable( EnableCap.CullFace );
+        }
+
+        if ( EnablePolygonOffsetFill )
+        {
+            _gl.Enable( EnableCap.PolygonOffsetFill );
+            _gl.PolygonOffset( PolygonOffsetFactor, PolygonOffsetUnits );
+        }
+        else
+        {
+            _gl.Disable( EnableCap.PolygonOffsetFill );
+        }
+
+        if ( renderWireframe )
+        {
+            _gl.PolygonMode( TriangleFace.FrontAndBack, PolygonMode.Line );
+        }
+        else
+        {
+            _gl.PolygonMode( TriangleFace.FrontAndBack, PolygonMode.Fill );
+        }
+    }
+
+    private void RestoreRenderState()
+    {
+        if ( EnableFaceCulling )
+        {
+            _gl.Disable( EnableCap.CullFace );
+        }
+
+        if ( EnablePolygonOffsetFill )
+        {
+            _gl.Disable( EnableCap.PolygonOffsetFill );
+        }
+
+        _gl.PolygonMode( TriangleFace.FrontAndBack, PolygonMode.Fill );
+    }
+
+    private Matrix4x4 GetMeshModelMatrix( int meshIndex )
+    {
+        if ( !MeshPositionOffsets.TryGetValue( meshIndex, out Vector3 offset ) )
+        {
+            return _transform.ModelMatrix;
+        }
+
+        return Matrix4x4.CreateTranslation( offset ) * _transform.ModelMatrix;
+    }
+
+    private static ModelMeshData CreateDebugZSteppedMesh( ModelMeshData meshData, float zStep )
+    {
+        float[] vertices = (float[])meshData.Vertices.Clone();
+        int stride = meshData.VertexStride;
+        int vertexCount = vertices.Length / stride;
+
+        for ( int vertexIndex = 0; vertexIndex < vertexCount; vertexIndex++ )
+        {
+            int offset = vertexIndex * stride;
+            vertices[offset + 2] += vertexIndex * zStep;
+        }
+
+        return new ModelMeshData(
+            meshData.Name,
+            vertices,
+            meshData.Indices,
+            meshData.PrimitiveType,
+            meshData.IndicesPerPrimitive,
+            meshData.MaterialIndex,
+            meshData.MaterialKey,
+            meshData.TextureKey );
     }
 
     private static ( float[] Vertices, uint[] Indices ) BuildCombinedGeometry( IReadOnlyList<ModelMeshData> meshes )
@@ -221,45 +362,5 @@ public class ModelObject : RenderableObject
         }
 
         return ( vertices.ToArray(), indices.ToArray() );
-    }
-
-    private sealed class RenderableMesh : IDisposable
-    {
-        private readonly BufferObject<float> _vbo;
-        private readonly BufferObject<uint> _ebo;
-        private readonly VertexArrayObject<float, uint> _vao;
-
-        public RenderableMesh( GL gl, ModelMeshData data, Texture? texture, Material? material )
-        {
-            _vbo = new BufferObject<float>( gl, data.Vertices, BufferTargetARB.ArrayBuffer );
-            _ebo = new BufferObject<uint>( gl, data.Indices, BufferTargetARB.ElementArrayBuffer );
-            _vao = new VertexArrayObject<float, uint>( gl, _vbo, _ebo );
-
-            _vao.VertexAttributePointer( 0, 3, VertexAttribPointerType.Float, 8, 0 );
-            _vao.VertexAttributePointer( 1, 3, VertexAttribPointerType.Float, 8, 3 );
-            _vao.VertexAttributePointer( 2, 2, VertexAttribPointerType.Float, 8, 6 );
-
-            Texture = texture;
-            Material = material;
-            IndexCount = data.Indices.Length;
-        }
-
-        public Texture? Texture { get; }
-
-        public Material? Material { get; }
-
-        public int IndexCount { get; }
-
-        public void Bind()
-        {
-            _vao.Bind();
-        }
-
-        public void Dispose()
-        {
-            _vbo.Dispose();
-            _ebo.Dispose();
-            _vao.Dispose();
-        }
     }
 }

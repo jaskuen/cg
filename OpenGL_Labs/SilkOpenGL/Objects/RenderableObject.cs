@@ -29,6 +29,7 @@ public abstract class RenderableObject : UpdateableObject, IDisposable
     private bool _initialized;
 
     public Vector3 Position => _transform.Position;
+    public bool ClearDepthBeforeRender { get; set; }
 
     private RenderableObject()
     {

@@ -8,9 +8,7 @@ public class RenderableMesh : RenderableObject
 {
     private readonly ModelMeshData _data;
     private readonly RenderableObject _parent;
-
-    private bool _firstRender = true;
-    private DateTime _renderTime = DateTime.Now;
+    private readonly bool _useImportedDiffuseColor;
 
     public RenderableMesh(RenderableObject parent, ModelMeshData data, string shaderKey, string? textureKey,
         bool isMaterial) : base(
@@ -18,46 +16,31 @@ public class RenderableMesh : RenderableObject
     {
         _parent = parent;
         _data = data;
+        _useImportedDiffuseColor = !isMaterial;
     }
 
-    public Texture? Texture { get; }
+    public Texture? Texture => _texture;
 
-    public Material? Material { get; }
+    public Material? Material => _material;
 
-    public int IndexCount { get; }
+    public int IndexCount => _data.Indices.Length;
 
     public PrimitiveType DrawPrimitive => _data.DrawPrimitive;
 
     public override unsafe void OnRender(double dt)
     {
-        // if (_firstRender)
-        // {
-        //     _renderTime = DateTime.Now.AddSeconds(_vao.Handle);
-        //     _firstRender = false;
-        // }
-        //
-        // if (_renderTime.AddSeconds(1) < DateTime.Now)
-        // {
-        //     _renderTime = DateTime.Now.AddSeconds(18);
-        // }
-        //
-        // if (_renderTime > DateTime.Now)
-        // {
-        //     return;
-        // }
-
-        // Console.WriteLine($"Rendering {_data.Name}");
-
         _vao.Bind();
-        _gl.Enable(EnableCap.DepthTest);
-        _gl.FrontFace(FrontFaceDirection.CW);
-        _gl.DepthMask(true);
-
-        _gl.Disable(EnableCap.CullFace);
+        if (_indices.Length == 0)
+        {
+            return;
+        }
 
         Matrix4x4 meshModel = _data.LocalTransform * _parent._transform.ModelMatrix;
         _shader.SetUniform("uModel", meshModel);
-        _shader.TrySetUniform("uMaterial.baseColor", _data.DiffuseColor);
+        if (_useImportedDiffuseColor)
+        {
+            _shader.TrySetUniform("uMaterial.baseColor", _data.DiffuseColor);
+        }
 
         if (Matrix4x4.Invert(meshModel, out var invModel))
         {
@@ -91,6 +74,11 @@ public class RenderableMesh : RenderableObject
     public override unsafe void OnRenderPicking(GL gl, Shader pickingShader)
     {
         _vao.Bind();
+        if (_indices.Length == 0)
+        {
+            return;
+        }
+
         Matrix4x4 meshModel = _data.LocalTransform * _parent._transform.ModelMatrix;
         pickingShader.SetUniform("uModel", meshModel);
         gl.DrawElements(_data.DrawPrimitive, (uint)_indices.Length, DrawElementsType.UnsignedInt, null);

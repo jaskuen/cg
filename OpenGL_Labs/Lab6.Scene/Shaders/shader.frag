@@ -136,8 +136,9 @@ void main()
         ao = texture(sampler2D(uTextures[uMaterial.aoMap]), vTexCoords).r;
     }
 
-    vec3 N = getNormalFromMap();
     vec3 V = normalize(vViewPos - vWorldPos);
+    vec3 N = getNormalFromMap();
+    N = faceforward(N, -V, N);
 
     vec3 F0 = vec3(0.04); 
     F0 = mix(F0, albedo, metallic);

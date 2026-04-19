@@ -95,6 +95,10 @@ public class World
 
         _gl.Enable(EnableCap.Blend);
         _gl.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
+        _gl.Enable(EnableCap.DepthTest);
+        _gl.DepthFunc(DepthFunction.Lequal);
+        _gl.DepthMask(true);
+        _gl.Disable(EnableCap.CullFace);
 
         RegisterShaders();
         CompileShadersAndTextures();

@@ -111,59 +111,67 @@ public abstract class RenderableObject : UpdateableObject, IDisposable
             _shader.TrySetUniform("uHasTexture", 0);
         }
 
-        _shader.TrySetUniform("uMaterial.baseColor", Vector3.One);
+        ResetMaterialUniforms();
 
-        if (_material != null)
+        if (_material == null)
         {
-            if (_material.Albedo != null)
+            if (_texture != null)
             {
-                _shader.TrySetUniform("uMaterial.albedoMap", _material.Albedo.TextureId);
+                _shader.TrySetUniform("uMaterial.albedoMap", _texture.TextureId);
                 _shader.TrySetUniform("uMaterial.hasAlbedoMap", 1);
             }
-            else
-            {
-                _shader.TrySetUniform("uMaterial.hasAlbedoMap", 0);
-            }
 
-            if (_material.Normal != null)
-            {
-                _shader.TrySetUniform("uMaterial.normalMap", _material.Normal.TextureId);
-                _shader.TrySetUniform("uMaterial.hasNormalMap", 1);
-            }
-            else
-            {
-                _shader.TrySetUniform("uMaterial.hasNormalMap", 0);
-            }
+            return;
+        }
 
-            if (_material.Metallic != null)
-            {
-                _shader.TrySetUniform("uMaterial.metallicMap", _material.Metallic.TextureId);
-                _shader.TrySetUniform("uMaterial.hasMetallicMap", 1);
-            }
-            else
-            {
-                _shader.TrySetUniform("uMaterial.hasMetallicMap", 0);
-            }
+        BindMaterialUniforms(_material);
+    }
 
-            if (_material.Roughness != null)
-            {
-                _shader.TrySetUniform("uMaterial.roughnessMap", _material.Roughness.TextureId);
-                _shader.TrySetUniform("uMaterial.hasRoughnessMap", 1);
-            }
-            else
-            {
-                _shader.TrySetUniform("uMaterial.hasRoughnessMap", 0);
-            }
+    private void ResetMaterialUniforms()
+    {
+        _shader.TrySetUniform("uMaterial.albedoMap", 0);
+        _shader.TrySetUniform("uMaterial.normalMap", 0);
+        _shader.TrySetUniform("uMaterial.metallicMap", 0);
+        _shader.TrySetUniform("uMaterial.roughnessMap", 0);
+        _shader.TrySetUniform("uMaterial.aoMap", 0);
+        _shader.TrySetUniform("uMaterial.hasAlbedoMap", 0);
+        _shader.TrySetUniform("uMaterial.hasNormalMap", 0);
+        _shader.TrySetUniform("uMaterial.hasMetallicMap", 0);
+        _shader.TrySetUniform("uMaterial.hasRoughnessMap", 0);
+        _shader.TrySetUniform("uMaterial.hasAoMap", 0);
+        _shader.TrySetUniform("uMaterial.baseColor", Vector3.One);
+    }
 
-            if (_material.Ao != null)
-            {
-                _shader.TrySetUniform("uMaterial.aoMap", _material.Ao.TextureId);
-                _shader.TrySetUniform("uMaterial.hasAoMap", 1);
-            }
-            else
-            {
-                _shader.TrySetUniform("uMaterial.hasAoMap", 0);
-            }
+    private void BindMaterialUniforms(Material material)
+    {
+        if (material.Albedo != null)
+        {
+            _shader.TrySetUniform("uMaterial.albedoMap", material.Albedo.TextureId);
+            _shader.TrySetUniform("uMaterial.hasAlbedoMap", 1);
+        }
+
+        if (material.Normal != null)
+        {
+            _shader.TrySetUniform("uMaterial.normalMap", material.Normal.TextureId);
+            _shader.TrySetUniform("uMaterial.hasNormalMap", 1);
+        }
+
+        if (material.Metallic != null)
+        {
+            _shader.TrySetUniform("uMaterial.metallicMap", material.Metallic.TextureId);
+            _shader.TrySetUniform("uMaterial.hasMetallicMap", 1);
+        }
+
+        if (material.Roughness != null)
+        {
+            _shader.TrySetUniform("uMaterial.roughnessMap", material.Roughness.TextureId);
+            _shader.TrySetUniform("uMaterial.hasRoughnessMap", 1);
+        }
+
+        if (material.Ao != null)
+        {
+            _shader.TrySetUniform("uMaterial.aoMap", material.Ao.TextureId);
+            _shader.TrySetUniform("uMaterial.hasAoMap", 1);
         }
     }
 

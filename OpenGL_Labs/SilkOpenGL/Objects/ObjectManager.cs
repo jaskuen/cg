@@ -29,13 +29,31 @@ public class ObjectManager
 
     public void Add(RenderableObject obj)
     {
+        if (_objects.Contains(obj) || _toAdd.Contains(obj))
+        {
+            return;
+        }
+
+        if (_toRemove.Remove(obj))
+        {
+            _objects.Add(obj);
+            return;
+        }
+
         _toAdd.Add(obj); // Отложенное добавление — безопасно из любого потока
     }
 
     public void Remove(RenderableObject obj)
     {
-        _toRemove.Add(obj);
-        _objects.Remove(obj);
+        if (_toAdd.Remove(obj))
+        {
+            return;
+        }
+
+        if (_objects.Remove(obj))
+        {
+            _toRemove.Add(obj);
+        }
     }
 
     public void Update(GL gl, double dt)

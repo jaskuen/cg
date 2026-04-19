@@ -45,10 +45,8 @@ public sealed class ModelImportOptions
             flags |= PostProcessSteps.CalculateTangentSpace;
         }
 
-        if ( JoinIdenticalVertices )
-        {
-            flags |= PostProcessSteps.JoinIdenticalVertices;
-        }
+        // Joining is applied in ModelLoader after triangulation and attribute extraction.
+        // Assimp's join step can corrupt some OBJ n-gons/quads before triangulation.
 
         if ( ImproveCacheLocality )
         {

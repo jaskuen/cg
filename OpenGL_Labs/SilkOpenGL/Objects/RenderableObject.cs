@@ -216,6 +216,7 @@ public abstract class RenderableObject : UpdateableObject, IDisposable
         _vbo = null;
         _ebo = null;
         _vao = null;
+        _initialized = false;
     }
 
     public void Dispose()

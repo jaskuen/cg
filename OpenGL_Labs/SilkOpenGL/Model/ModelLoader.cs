@@ -153,7 +153,13 @@ public static unsafe class ModelLoader
                 continue;
             }
 
+            float[] primitiveVertices = vertices;
             uint[] indices = ExtractIndices(mesh, primitive.FaceIndexCount);
+            if (options.JoinIdenticalVertices)
+            {
+                (primitiveVertices, indices) = JoinPackedVertices(vertices, indices);
+            }
+
             int primitiveCount = indices.Length / primitive.FaceIndexCount;
             if (primitiveCount == 0 ||
                 (options.MinimumPrimitiveCount.HasValue && primitiveCount < options.MinimumPrimitiveCount.Value))
@@ -167,7 +173,7 @@ public static unsafe class ModelLoader
 
             meshData.Add(new ModelMeshData(
                 primitiveName,
-                vertices,
+                primitiveVertices,
                 indices,
                 (uint)mesh.MaterialIndex,
                 textureKey: material.TextureKey,
@@ -241,6 +247,35 @@ public static unsafe class ModelLoader
         }
 
         return indices.ToArray();
+    }
+
+    private static (float[] Vertices, uint[] Indices) JoinPackedVertices(float[] vertices, uint[] indices)
+    {
+        Dictionary<PackedVertexKey, uint> remap = new(indices.Length);
+        List<float> joinedVertices = new(vertices.Length);
+        uint[] joinedIndices = new uint[indices.Length];
+
+        for (int i = 0; i < indices.Length; i++)
+        {
+            uint oldIndex = indices[i];
+            int oldOffset = checked((int)oldIndex * VertexStride);
+            PackedVertexKey key = new(vertices, oldOffset);
+
+            if (!remap.TryGetValue(key, out uint newIndex))
+            {
+                newIndex = (uint)(joinedVertices.Count / VertexStride);
+                remap.Add(key, newIndex);
+
+                for (int component = 0; component < VertexStride; component++)
+                {
+                    joinedVertices.Add(vertices[oldOffset + component]);
+                }
+            }
+
+            joinedIndices[i] = newIndex;
+        }
+
+        return (joinedVertices.ToArray(), joinedIndices);
     }
 
     private static (GLPrimitiveType Primitive, int FaceIndexCount, bool Include)[] GetRequestedPrimitives(
@@ -379,8 +414,93 @@ public static unsafe class ModelLoader
         }
 
         string siblingTexturePath = Path.GetFullPath(Path.Combine(modelDirectory, fileName));
-        return System.IO.File.Exists(siblingTexturePath) ? siblingTexturePath : null;
+        if (System.IO.File.Exists(siblingTexturePath))
+        {
+            return siblingTexturePath;
+        }
+
+        Console.WriteLine($"Model texture not found: '{rawTexturePath}'");
+        return null;
     }
 
     private sealed record ImportedMaterial(string? TextureKey, NumericsVector3 DiffuseColor);
+
+    private readonly struct PackedVertexKey : IEquatable<PackedVertexKey>
+    {
+        private readonly int _v00;
+        private readonly int _v01;
+        private readonly int _v02;
+        private readonly int _v03;
+        private readonly int _v04;
+        private readonly int _v05;
+        private readonly int _v06;
+        private readonly int _v07;
+        private readonly int _v08;
+        private readonly int _v09;
+        private readonly int _v10;
+        private readonly int _v11;
+        private readonly int _v12;
+        private readonly int _v13;
+
+        public PackedVertexKey(float[] vertices, int offset)
+        {
+            _v00 = BitConverter.SingleToInt32Bits(vertices[offset]);
+            _v01 = BitConverter.SingleToInt32Bits(vertices[offset + 1]);
+            _v02 = BitConverter.SingleToInt32Bits(vertices[offset + 2]);
+            _v03 = BitConverter.SingleToInt32Bits(vertices[offset + 3]);
+            _v04 = BitConverter.SingleToInt32Bits(vertices[offset + 4]);
+            _v05 = BitConverter.SingleToInt32Bits(vertices[offset + 5]);
+            _v06 = BitConverter.SingleToInt32Bits(vertices[offset + 6]);
+            _v07 = BitConverter.SingleToInt32Bits(vertices[offset + 7]);
+            _v08 = BitConverter.SingleToInt32Bits(vertices[offset + 8]);
+            _v09 = BitConverter.SingleToInt32Bits(vertices[offset + 9]);
+            _v10 = BitConverter.SingleToInt32Bits(vertices[offset + 10]);
+            _v11 = BitConverter.SingleToInt32Bits(vertices[offset + 11]);
+            _v12 = BitConverter.SingleToInt32Bits(vertices[offset + 12]);
+            _v13 = BitConverter.SingleToInt32Bits(vertices[offset + 13]);
+        }
+
+        public bool Equals(PackedVertexKey other)
+        {
+            return _v00 == other._v00 &&
+                   _v01 == other._v01 &&
+                   _v02 == other._v02 &&
+                   _v03 == other._v03 &&
+                   _v04 == other._v04 &&
+                   _v05 == other._v05 &&
+                   _v06 == other._v06 &&
+                   _v07 == other._v07 &&
+                   _v08 == other._v08 &&
+                   _v09 == other._v09 &&
+                   _v10 == other._v10 &&
+                   _v11 == other._v11 &&
+                   _v12 == other._v12 &&
+                   _v13 == other._v13;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is PackedVertexKey other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            HashCode hash = new();
+            hash.Add(_v00);
+            hash.Add(_v01);
+            hash.Add(_v02);
+            hash.Add(_v03);
+            hash.Add(_v04);
+            hash.Add(_v05);
+            hash.Add(_v06);
+            hash.Add(_v07);
+            hash.Add(_v08);
+            hash.Add(_v09);
+            hash.Add(_v10);
+            hash.Add(_v11);
+            hash.Add(_v12);
+            hash.Add(_v13);
+            return hash.ToHashCode();
+        }
+    }
 }

@@ -47,12 +47,13 @@ public class ModelObject : RenderableObject
             string? materialKey =
                 _useDefaultMaterial ? meshData.MaterialKey ?? _defaultMaterialKey : meshData.MaterialKey;
 
-            _meshes.Add(new RenderableMesh(
+            RenderableMesh mesh = new(
                 this,
                 meshData,
                 ShaderKey,
                 _useDefaultMaterial ? materialKey : textureKey,
-                _useDefaultMaterial));
+                _useDefaultMaterial);
+            _meshes.Add(mesh);
         }
     }
 

@@ -368,14 +368,16 @@ public class World
 
         if (obj is RenderableObject renderable)
         {
-            _objectManager.Add(renderable);
-
             if (obj is ModelObject modelObject)
             {
                 foreach (var mesh in modelObject.Meshes)
                 {
                     AddObject(mesh);
                 }
+            }
+            else
+            {
+                _objectManager.Add(renderable);
             }
         }
         else

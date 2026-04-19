@@ -27,6 +27,8 @@ public class RenderableMesh : RenderableObject
 
     public PrimitiveType DrawPrimitive => _data.DrawPrimitive;
 
+    protected override Matrix4x4 WorldModelMatrix => _data.LocalTransform * _parent._transform.ModelMatrix;
+
     public override unsafe void OnRender(double dt)
     {
         _vao.Bind();
@@ -35,7 +37,7 @@ public class RenderableMesh : RenderableObject
             return;
         }
 
-        Matrix4x4 meshModel = _data.LocalTransform * _parent._transform.ModelMatrix;
+        Matrix4x4 meshModel = WorldModelMatrix;
         _shader.SetUniform("uModel", meshModel);
         if (_useImportedDiffuseColor)
         {
@@ -60,9 +62,12 @@ public class RenderableMesh : RenderableObject
         _ebo = new BufferObject<uint>(_gl, _indices, BufferTargetARB.ElementArrayBuffer);
         _vao = new VertexArrayObject<float, uint>(_gl, _vbo, _ebo);
 
-        _vao.VertexAttributePointer(0, 3, VertexAttribPointerType.Float, 8, 0);
-        _vao.VertexAttributePointer(1, 3, VertexAttribPointerType.Float, 8, 3);
-        _vao.VertexAttributePointer(2, 2, VertexAttribPointerType.Float, 8, 6);
+        uint stride = (uint)_data.VertexStride;
+        _vao.VertexAttributePointer(0, 3, VertexAttribPointerType.Float, stride, 0);
+        _vao.VertexAttributePointer(1, 3, VertexAttribPointerType.Float, stride, 3);
+        _vao.VertexAttributePointer(2, 2, VertexAttribPointerType.Float, stride, 6);
+        _vao.VertexAttributePointer(3, 3, VertexAttribPointerType.Float, stride, 8);
+        _vao.VertexAttributePointer(4, 3, VertexAttribPointerType.Float, stride, 11);
     }
 
     public override void OnUpdate(double dt)
@@ -79,7 +84,7 @@ public class RenderableMesh : RenderableObject
             return;
         }
 
-        Matrix4x4 meshModel = _data.LocalTransform * _parent._transform.ModelMatrix;
+        Matrix4x4 meshModel = WorldModelMatrix;
         pickingShader.SetUniform("uModel", meshModel);
         gl.DrawElements(_data.DrawPrimitive, (uint)_indices.Length, DrawElementsType.UnsignedInt, null);
     }

@@ -7,7 +7,7 @@ namespace SilkOpenGL.Model;
 
 public static unsafe class ModelLoader
 {
-    private const int VertexStride = 8;
+    private const int VertexStride = ModelMeshData.PackedVertexStride;
     private static readonly ImportedMaterial DefaultMaterial = new(null, NumericsVector3.One);
 
     public static ModelData Load(string filePath)
@@ -184,6 +184,7 @@ public static unsafe class ModelLoader
         float[] vertices = new float[mesh.VertexCount * VertexStride];
         bool hasNormals = mesh.HasNormals;
         bool hasTextureCoords = mesh.HasTextureCoords(0);
+        bool hasTangents = mesh.HasTangentBasis;
 
         for (int vertexIndex = 0; vertexIndex < mesh.VertexCount; vertexIndex++)
         {
@@ -204,6 +205,17 @@ public static unsafe class ModelLoader
             {
                 vertices[offset + 6] = mesh.TextureCoordinateChannels[0][vertexIndex].X;
                 vertices[offset + 7] = mesh.TextureCoordinateChannels[0][vertexIndex].Y;
+            }
+
+            if (hasTangents)
+            {
+                vertices[offset + 8] = mesh.Tangents[vertexIndex].X;
+                vertices[offset + 9] = mesh.Tangents[vertexIndex].Y;
+                vertices[offset + 10] = mesh.Tangents[vertexIndex].Z;
+
+                vertices[offset + 11] = mesh.BiTangents[vertexIndex].X;
+                vertices[offset + 12] = mesh.BiTangents[vertexIndex].Y;
+                vertices[offset + 13] = mesh.BiTangents[vertexIndex].Z;
             }
         }
 
@@ -278,11 +290,12 @@ public static unsafe class ModelLoader
 
     private static NumericsMatrix4x4 ToNumerics(Assimp.Matrix4x4 matrix)
     {
+        // Assimp stores column-vector transforms; System.Numerics is used here with row-vector composition.
         return new NumericsMatrix4x4(
-            matrix.A1, matrix.A2, matrix.A3, matrix.A4,
-            matrix.B1, matrix.B2, matrix.B3, matrix.B4,
-            matrix.C1, matrix.C2, matrix.C3, matrix.C4,
-            matrix.D1, matrix.D2, matrix.D3, matrix.D4);
+            matrix.A1, matrix.B1, matrix.C1, matrix.D1,
+            matrix.A2, matrix.B2, matrix.C2, matrix.D2,
+            matrix.A3, matrix.B3, matrix.C3, matrix.D3,
+            matrix.A4, matrix.B4, matrix.C4, matrix.D4);
     }
 
     private static string GetMeshName(Mesh mesh, int meshIndex)
@@ -346,12 +359,27 @@ public static unsafe class ModelLoader
             return null;
         }
 
-        string normalizedRelativePath = rawTexturePath
+        string normalizedTexturePath = rawTexturePath
             .Replace('\\', Path.DirectorySeparatorChar)
             .Replace('/', Path.DirectorySeparatorChar);
 
-        string absolutePath = Path.GetFullPath(Path.Combine(modelDirectory, normalizedRelativePath));
-        return System.IO.File.Exists(absolutePath) ? absolutePath : null;
+        string absolutePath = Path.IsPathRooted(normalizedTexturePath)
+            ? Path.GetFullPath(normalizedTexturePath)
+            : Path.GetFullPath(Path.Combine(modelDirectory, normalizedTexturePath));
+
+        if (System.IO.File.Exists(absolutePath))
+        {
+            return absolutePath;
+        }
+
+        string? fileName = Path.GetFileName(normalizedTexturePath);
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            return null;
+        }
+
+        string siblingTexturePath = Path.GetFullPath(Path.Combine(modelDirectory, fileName));
+        return System.IO.File.Exists(siblingTexturePath) ? siblingTexturePath : null;
     }
 
     private sealed record ImportedMaterial(string? TextureKey, NumericsVector3 DiffuseColor);

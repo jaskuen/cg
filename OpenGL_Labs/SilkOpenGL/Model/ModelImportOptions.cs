@@ -7,6 +7,7 @@ public sealed class ModelImportOptions
     public bool Triangulate { get; init; } = true;
     public bool FlipUvCoordinates { get; init; } = true;
     public bool GenerateSmoothNormals { get; init; } = true;
+    public bool CalculateTangentSpace { get; init; } = true;
     public bool JoinIdenticalVertices { get; init; }
     public bool ImproveCacheLocality { get; init; } = true;
     public bool FindInvalidData { get; init; } = true;
@@ -37,6 +38,11 @@ public sealed class ModelImportOptions
         if ( GenerateSmoothNormals )
         {
             flags |= PostProcessSteps.GenerateSmoothNormals;
+        }
+
+        if ( CalculateTangentSpace )
+        {
+            flags |= PostProcessSteps.CalculateTangentSpace;
         }
 
         if ( JoinIdenticalVertices )

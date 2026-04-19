@@ -5,6 +5,8 @@ namespace SilkOpenGL.Model;
 
 public sealed class ModelMeshData
 {
+    public const int PackedVertexStride = 14;
+
     public ModelMeshData(
         string name,
         float[] vertices,
@@ -29,7 +31,7 @@ public sealed class ModelMeshData
 
     public string Name { get; }
 
-    // Position (3), normal (3), UV (2)
+    // Position (3), normal (3), UV (2), tangent (3), bitangent (3)
     public float[] Vertices { get; }
 
     public uint[] Indices { get; }
@@ -46,5 +48,5 @@ public sealed class ModelMeshData
 
     public Matrix4x4 LocalTransform { get; }
 
-    public int VertexStride => 8;
+    public int VertexStride => PackedVertexStride;
 }

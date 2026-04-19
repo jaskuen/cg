@@ -3,6 +3,8 @@
 
 in vec3 vWorldPos;
 in vec3 vWorldNormal;
+in vec3 vWorldTangent;
+in vec3 vWorldBitangent;
 in vec2 vTexCoords;
 in vec3 vViewPos;
 
@@ -50,13 +52,23 @@ vec3 getNormalFromMap()
     if (uMaterial.hasNormalMap == 1) {
         vec3 tangentNormal = texture(sampler2D(uTextures[uMaterial.normalMap]), vTexCoords).xyz * 2.0 - 1.0;
 
+        vec3 N = normalize(vWorldNormal);
+        vec3 T = vWorldTangent;
+        vec3 B = vWorldBitangent;
+
+        if (length(T) > 0.0001 && length(B) > 0.0001) {
+            T = normalize(T - dot(T, N) * N);
+            float handedness = dot(cross(N, T), B) < 0.0 ? -1.0 : 1.0;
+            B = normalize(cross(N, T)) * handedness;
+            return normalize(mat3(T, B, N) * tangentNormal);
+        }
+
         vec3 Q1  = dFdx(vWorldPos);
         vec3 Q2  = dFdy(vWorldPos);
         vec2 st1 = dFdx(vTexCoords);
         vec2 st2 = dFdy(vTexCoords);
 
-        vec3 N   = normalize(vWorldNormal);
-        vec3 T  = Q1*st2.t - Q2*st1.t;
+        T  = Q1*st2.t - Q2*st1.t;
         
         if (length(T) < 0.0001) {
             vec3 up = abs(N.y) < 0.999 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
@@ -66,7 +78,7 @@ vec3 getNormalFromMap()
         }
         
         T = normalize(T - dot(T, N) * N);
-        vec3 B  = cross(N, T);
+        B  = cross(N, T);
         mat3 TBN = mat3(T, B, N);
 
         return normalize(TBN * tangentNormal);

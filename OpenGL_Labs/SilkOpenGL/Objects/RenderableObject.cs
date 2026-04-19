@@ -31,6 +31,8 @@ public abstract class RenderableObject : UpdateableObject, IDisposable
     public Vector3 Position => _transform.Position;
     public bool ClearDepthBeforeRender { get; set; }
 
+    protected virtual Matrix4x4 WorldModelMatrix => _transform.ModelMatrix;
+
     private RenderableObject()
     {
         _transform = new Transform();
@@ -177,18 +179,25 @@ public abstract class RenderableObject : UpdateableObject, IDisposable
 
     public Vector3[] GetWorldVertices(int verticesCount)
     {
+        if (verticesCount <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(verticesCount), "Vertex stride must be positive.");
+        }
+
         int vertexCount = _vertices.Length / verticesCount;
         Vector3[] worldPoints = new Vector3[vertexCount];
+        Matrix4x4 modelMatrix = WorldModelMatrix;
 
         for (int i = 0; i < vertexCount; i++)
         {
+            int vertexOffset = i * verticesCount;
             Vector3 localPos = new Vector3(
-                _vertices[i * 3],
-                _vertices[i * 3 + 1],
-                _vertices[i * 3 + 2]
+                _vertices[vertexOffset],
+                _vertices[vertexOffset + 1],
+                _vertices[vertexOffset + 2]
             );
 
-            worldPoints[i] = Vector3.Transform(localPos, _transform.ModelMatrix);
+            worldPoints[i] = Vector3.Transform(localPos, modelMatrix);
         }
 
         return worldPoints;

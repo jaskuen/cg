@@ -1,0 +1,27 @@
+# Blender MTL File: 'beer-bottle-carrier-002.blend'
+# Material Count: 2
+
+newmtl beer-bottle-carrier-002-bottle
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Bump textures/beer-bottle-carrier-002-bottle-nrm-metalness-4k.png
+map_Ns textures/beer-bottle-carrier-002-bottle-roughness-metalness-4k.png
+refl textures/beer-bottle-carrier-002-bottle-metalness-metalness-4k.png
+
+newmtl beer-bottle-carrier-002-box
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Bump textures/beer-bottle-carrier-002-box-nrm-metalness-4k.png
+map_Ns textures/beer-bottle-carrier-002-box-roughness-metalness-4k.png

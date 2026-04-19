@@ -1,6 +1,5 @@
 using System.Numerics;
 using Lab5.Tiles;
-using Silk.NET.Assimp;
 using Silk.NET.Maths;
 using Silk.NET.Windowing;
 using SilkOpenGL;

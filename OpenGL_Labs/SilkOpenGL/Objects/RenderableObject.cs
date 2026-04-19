@@ -24,7 +24,7 @@ public abstract class RenderableObject : UpdateableObject, IDisposable
     public string? MaterialKey { get; }
     protected Material? _material;
 
-    protected Transform _transform;
+    protected internal Transform _transform;
 
     private bool _initialized;
 
@@ -54,6 +54,11 @@ public abstract class RenderableObject : UpdateableObject, IDisposable
 
     public void Render(double dt)
     {
+        if (_vao != null)
+        {
+            _vao.Bind();
+        }
+
         OnRender(dt);
 
         _gl.BindVertexArray(0);

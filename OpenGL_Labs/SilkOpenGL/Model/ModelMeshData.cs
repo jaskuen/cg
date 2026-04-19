@@ -1,3 +1,4 @@
+using System.Numerics;
 using Silk.NET.OpenGL;
 
 namespace SilkOpenGL.Model;
@@ -11,7 +12,9 @@ public sealed class ModelMeshData
         uint materialIndex = 0,
         string? materialKey = null,
         string? textureKey = null,
-        GLEnum drawPrimitive = GLEnum.Triangles )
+        Vector3? diffuseColor = null,
+        PrimitiveType drawPrimitive = PrimitiveType.Triangles,
+        Matrix4x4? localTransform = null )
     {
         Name = name;
         Vertices = vertices;
@@ -19,7 +22,9 @@ public sealed class ModelMeshData
         MaterialIndex = materialIndex;
         MaterialKey = materialKey;
         TextureKey = textureKey;
+        DiffuseColor = diffuseColor ?? Vector3.One;
         DrawPrimitive = drawPrimitive;
+        LocalTransform = localTransform ?? Matrix4x4.Identity;
     }
 
     public string Name { get; }
@@ -35,7 +40,11 @@ public sealed class ModelMeshData
 
     public string? TextureKey { get; init; }
 
-    public GLEnum DrawPrimitive { get; }
+    public Vector3 DiffuseColor { get; }
+
+    public PrimitiveType DrawPrimitive { get; }
+
+    public Matrix4x4 LocalTransform { get; }
 
     public int VertexStride => 8;
 }

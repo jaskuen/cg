@@ -38,6 +38,8 @@ struct Material {
     int hasMetallicMap;
     int hasRoughnessMap;
     int hasAoMap;
+
+    vec3 baseColor;
 };
 uniform Material uMaterial;
 
@@ -114,9 +116,9 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
 
 void main()
 {
-    vec3 albedo = vec3(1.0);
+    vec3 albedo = uMaterial.baseColor;
     if (uMaterial.hasAlbedoMap == 1) {
-        albedo = pow(texture(sampler2D(uTextures[uMaterial.albedoMap]), vTexCoords).rgb, vec3(2.2));
+        albedo *= pow(texture(sampler2D(uTextures[uMaterial.albedoMap]), vTexCoords).rgb, vec3(2.2));
     }
     
     float metallic = 0.0;

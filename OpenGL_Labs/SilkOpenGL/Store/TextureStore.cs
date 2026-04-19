@@ -23,6 +23,11 @@ public class TextureStore : IDisposable
         return _textures[textureKey];
     }
 
+    public bool ContainsTexture(string textureKey)
+    {
+        return _textures.ContainsKey(textureKey);
+    }
+
     public bool CompilePending(GL gl)
     {
         bool compiledAny = false;

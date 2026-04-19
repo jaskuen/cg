@@ -41,8 +41,13 @@ public abstract class RenderableObject : UpdateableObject, IDisposable
         ShaderKey = shaderKey;
     }
 
-    public RenderableObject(string shaderKey, string textureKey, bool isMaterial = false) : this(shaderKey)
+    public RenderableObject(string shaderKey, string? textureKey, bool isMaterial = false) : this(shaderKey)
     {
+        if (string.IsNullOrWhiteSpace(textureKey))
+        {
+            return;
+        }
+
         if (isMaterial)
         {
             MaterialKey = textureKey;
@@ -72,7 +77,14 @@ public abstract class RenderableObject : UpdateableObject, IDisposable
         if (_initialized) return;
         _gl = gl;
         _shader = shaderStore.GetShader(ShaderKey);
-        _texture = TextureKey != null ? textureStore.GetTexture(TextureKey) : null;
+        if (TextureKey != null && !textureStore.ContainsTexture(TextureKey) && File.Exists(TextureKey))
+        {
+            textureStore.CreateTexture(TextureKey, TextureKey);
+        }
+
+        _texture = TextureKey != null && textureStore.ContainsTexture(TextureKey)
+            ? textureStore.GetTexture(TextureKey)
+            : null;
         _material = MaterialKey != null ? materialStore.GetMaterial(MaterialKey) : null;
 
         OnInit();
@@ -98,6 +110,8 @@ public abstract class RenderableObject : UpdateableObject, IDisposable
             _shader.TrySetUniform("uHandle", 0);
             _shader.TrySetUniform("uHasTexture", 0);
         }
+
+        _shader.TrySetUniform("uMaterial.baseColor", Vector3.One);
 
         if (_material != null)
         {

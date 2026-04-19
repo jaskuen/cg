@@ -1,5 +1,4 @@
 using Silk.NET.OpenGL;
-using SilkOpenGL.Model;
 using SilkOpenGL.Store;
 using SilkOpenGL.Text;
 

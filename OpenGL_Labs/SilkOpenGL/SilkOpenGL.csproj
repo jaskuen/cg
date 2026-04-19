@@ -41,6 +41,10 @@
 
     <ItemGroup>
       <Compile Remove="Camera.cs" />
+      <Compile Remove="obj/**/*.cs" />
+      <Compile Remove="obj_*/**/*.cs" />
+      <Compile Remove="bin/**/*.cs" />
+      <Compile Remove="bin_*/**/*.cs" />
     </ItemGroup>
 
 </Project>

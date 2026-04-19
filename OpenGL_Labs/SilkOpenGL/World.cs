@@ -398,7 +398,18 @@ public class World
         }
     }
 
-    public void RemoveObject(RenderableObject obj) => _objectManager.Remove(obj);
+    public void RemoveObject(RenderableObject obj)
+    {
+        if (obj is ModelObject modelObject)
+        {
+            foreach (var mesh in modelObject.Meshes)
+            {
+                _objectManager.Remove(mesh);
+            }
+        }
+
+        _objectManager.Remove(obj);
+    }
 
     public void AddLight(LightEntity light)
     {

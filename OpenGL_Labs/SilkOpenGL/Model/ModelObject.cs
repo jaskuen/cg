@@ -1,4 +1,3 @@
-using Silk.NET.OpenGL;
 using SilkOpenGL.Objects;
 
 namespace SilkOpenGL.Model;
@@ -10,7 +9,6 @@ public class ModelObject : RenderableObject
     private readonly string? _defaultTextureKey;
     private readonly string? _defaultMaterialKey;
     private readonly bool _useDefaultMaterial;
-    private bool _isInitialized;
 
     private DateTime _changeMesh;
     private int _currMeshIndex = 0;
@@ -20,20 +18,14 @@ public class ModelObject : RenderableObject
     public ModelObject(string shaderKey, ModelData modelData) : base(shaderKey)
     {
         _modelData = modelData ?? throw new ArgumentNullException(nameof(modelData));
-
-        foreach (ModelMeshData meshData in _modelData.Meshes)
-        {
-            string? textureKey = _useDefaultMaterial ? null : meshData.TextureKey ?? _defaultTextureKey;
-            string? materialKey =
-                _useDefaultMaterial ? meshData.MaterialKey ?? _defaultMaterialKey : meshData.MaterialKey;
-
-            _meshes.Add(new RenderableMesh(this, meshData, ShaderKey, textureKey ?? materialKey, false));
-        }
+        CreateRenderableMeshes();
     }
 
     public ModelObject(string shaderKey, ModelData modelData, string resourceKey, bool isMaterial)
-        : this(shaderKey, modelData)
+        : base(shaderKey)
     {
+        _modelData = modelData ?? throw new ArgumentNullException(nameof(modelData));
+
         if (isMaterial)
         {
             _defaultMaterialKey = resourceKey;
@@ -44,13 +36,23 @@ public class ModelObject : RenderableObject
             _defaultTextureKey = resourceKey;
         }
 
+        CreateRenderableMeshes();
+    }
+
+    private void CreateRenderableMeshes()
+    {
         foreach (ModelMeshData meshData in _modelData.Meshes)
         {
             string? textureKey = _useDefaultMaterial ? null : meshData.TextureKey ?? _defaultTextureKey;
             string? materialKey =
                 _useDefaultMaterial ? meshData.MaterialKey ?? _defaultMaterialKey : meshData.MaterialKey;
 
-            _meshes.Add(new RenderableMesh(this, meshData, ShaderKey, isMaterial ? materialKey : textureKey, isMaterial));
+            _meshes.Add(new RenderableMesh(
+                this,
+                meshData,
+                ShaderKey,
+                _useDefaultMaterial ? materialKey : textureKey,
+                _useDefaultMaterial));
         }
     }
 
@@ -89,16 +91,11 @@ public class ModelObject : RenderableObject
 
         RenderableMesh mesh = _meshes[_currMeshIndex];
 
-        _gl.DrawElements(mesh.DrawPrimitive, (uint)mesh.IndexCount, DrawElementsType.UnsignedInt, null);
+        mesh.Render(dt: 0);
     }
 
     public override void OnClose()
     {
-        foreach (RenderableMesh mesh in _meshes)
-        {
-            mesh.Dispose();
-        }
-
         _meshes.Clear();
         _vertices = [];
         _indices = [];
@@ -192,6 +189,7 @@ public class ModelObject : RenderableObject
         _shader.TrySetUniform("uMaterial.hasMetallicMap", 0);
         _shader.TrySetUniform("uMaterial.hasRoughnessMap", 0);
         _shader.TrySetUniform("uMaterial.hasAoMap", 0);
+        _shader.TrySetUniform("uMaterial.baseColor", System.Numerics.Vector3.One);
     }
 
     private static ( float[] Vertices, uint[] Indices ) BuildCombinedGeometry(IReadOnlyList<ModelMeshData> meshes)

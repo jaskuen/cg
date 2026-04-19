@@ -1,15 +1,25 @@
 using Assimp;
+using GLPrimitiveType = Silk.NET.OpenGL.PrimitiveType;
+using NumericsMatrix4x4 = System.Numerics.Matrix4x4;
+using NumericsVector3 = System.Numerics.Vector3;
 
 namespace SilkOpenGL.Model;
 
 public static unsafe class ModelLoader
 {
     private const int VertexStride = 8;
+    private static readonly ImportedMaterial DefaultMaterial = new(null, NumericsVector3.One);
 
     public static ModelData Load(string filePath)
     {
+        return Load(filePath, new ModelImportOptions());
+    }
+
+    public static ModelData Load(string filePath, ModelImportOptions? options)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
 
+        options ??= new ModelImportOptions();
         string modelPath = Path.GetFullPath(filePath);
         if (!System.IO.File.Exists(modelPath))
         {
@@ -20,14 +30,14 @@ public static unsafe class ModelLoader
 
         try
         {
-            Scene scene = assimp.ImportFile(modelPath, GetImportFlags());
+            Scene scene = assimp.ImportFile(modelPath, options.ToPostProcessFlags());
             ValidateScene(assimp, scene, modelPath);
 
             string modelDirectory = Path.GetDirectoryName(modelPath) ?? string.Empty;
-            Dictionary<int, string?> materialTextures = BuildMaterialTextureMap(assimp, scene, modelDirectory);
+            Dictionary<int, ImportedMaterial> materials = BuildMaterialMap(assimp, scene, modelDirectory);
             List<ModelMeshData> meshes = [];
 
-            ProcessNode(scene.RootNode, scene, materialTextures, meshes);
+            ProcessNode(scene.RootNode, scene, materials, meshes, NumericsMatrix4x4.Identity, options);
 
             if (meshes.Count == 0)
             {
@@ -42,16 +52,6 @@ public static unsafe class ModelLoader
         }
     }
 
-    private static PostProcessSteps GetImportFlags()
-    {
-        return PostProcessSteps.Triangulate;
-        // |
-        // PostProcessSteps.GenerateSmoothNormals |
-        // PostProcessSteps.FlipUVs |
-        // PostProcessSteps.CalculateTangentSpace |
-        // PostProcessSteps.JoinIdenticalVertices;
-    }
-
     private static void ValidateScene(AssimpContext assimp, Scene scene, string modelPath)
     {
         if (scene != null && scene.RootNode != null && (scene.SceneFlags & SceneFlags.Incomplete) == 0)
@@ -62,38 +62,43 @@ public static unsafe class ModelLoader
         throw new InvalidOperationException($"Failed to load model '{modelPath}'.");
     }
 
-    private static Dictionary<int, string?> BuildMaterialTextureMap(
+    private static Dictionary<int, ImportedMaterial> BuildMaterialMap(
         AssimpContext assimp,
         Scene scene,
         string modelDirectory)
     {
-        Dictionary<int, string?> textures = [];
+        Dictionary<int, ImportedMaterial> materials = [];
         if (scene.Materials == null)
         {
-            return textures;
+            return materials;
         }
 
         for (int materialIndex = 0; materialIndex < scene.MaterialCount; materialIndex++)
         {
             Assimp.Material material = scene.Materials[materialIndex];
-            textures[materialIndex] = ResolveTexturePath(assimp, material, modelDirectory);
+            materials[materialIndex] = new ImportedMaterial(
+                ResolveTexturePath(assimp, material, modelDirectory),
+                GetDiffuseColor(material));
         }
 
-        return textures;
+        return materials;
     }
 
     private static void ProcessNode(
         Node node,
         Scene scene,
-        IReadOnlyDictionary<int, string?> materialTextures,
-        ICollection<ModelMeshData> meshes)
+        IReadOnlyDictionary<int, ImportedMaterial> materials,
+        ICollection<ModelMeshData> meshes,
+        NumericsMatrix4x4 parentTransform,
+        ModelImportOptions options)
     {
         if (node == null)
         {
             return;
         }
-        
-        Console.WriteLine(node.Transform.ToString());
+
+        NumericsMatrix4x4 localTransform = ToNumerics(node.Transform);
+        NumericsMatrix4x4 globalTransform = localTransform * parentTransform;
 
         for (int meshSlot = 0; meshSlot < node.MeshCount; meshSlot++)
         {
@@ -104,42 +109,81 @@ public static unsafe class ModelLoader
                 continue;
             }
 
-            meshes.Add(ProcessMesh(mesh, meshIndex, materialTextures));
+            foreach (ModelMeshData meshData in ProcessMesh(mesh, meshIndex, materials, globalTransform, options))
+            {
+                meshes.Add(meshData);
+            }
         }
 
         for (int childIndex = 0; childIndex < node.ChildCount; childIndex++)
         {
-            ProcessNode(node.Children[childIndex], scene, materialTextures, meshes);
+            ProcessNode(node.Children[childIndex], scene, materials, meshes, globalTransform, options);
         }
     }
 
-    private static ModelMeshData ProcessMesh(
+    private static IReadOnlyList<ModelMeshData> ProcessMesh(
         Mesh mesh,
         int meshIndex,
-        IReadOnlyDictionary<int, string?> materialTextures)
+        IReadOnlyDictionary<int, ImportedMaterial> materials,
+        NumericsMatrix4x4 localTransform,
+        ModelImportOptions options)
     {
+        List<ModelMeshData> meshData = [];
+
         if (mesh.Vertices == null || mesh.VertexCount == 0)
         {
-            throw new InvalidOperationException($"Mesh {meshIndex} does not contain any vertices.");
+            return meshData;
         }
-        
-        float[] vertices = ExtractVertices(mesh);
-        uint[] indices = ExtractIndices(mesh, meshIndex);
-        materialTextures.TryGetValue(mesh.MaterialIndex, out string? textureKey);
 
-        return new ModelMeshData(
-            GetMeshName(mesh, meshIndex),
-            vertices,
-            indices,
-            (uint)mesh.MaterialIndex,
-            textureKey: textureKey);
+        string meshName = GetMeshName(mesh, meshIndex);
+        if (ShouldSkipMesh(mesh, meshName, options))
+        {
+            return meshData;
+        }
+
+        float[] vertices = ExtractVertices(mesh);
+        ImportedMaterial material = materials.TryGetValue(mesh.MaterialIndex, out ImportedMaterial? importedMaterial)
+            ? importedMaterial
+            : DefaultMaterial;
+
+        foreach ((GLPrimitiveType Primitive, int FaceIndexCount, bool Include) primitive in GetRequestedPrimitives(options))
+        {
+            if (!primitive.Include)
+            {
+                continue;
+            }
+
+            uint[] indices = ExtractIndices(mesh, primitive.FaceIndexCount);
+            int primitiveCount = indices.Length / primitive.FaceIndexCount;
+            if (primitiveCount == 0 ||
+                (options.MinimumPrimitiveCount.HasValue && primitiveCount < options.MinimumPrimitiveCount.Value))
+            {
+                continue;
+            }
+
+            string primitiveName = primitive.Primitive == GLPrimitiveType.Triangles
+                ? meshName
+                : $"{meshName}_{primitive.Primitive}";
+
+            meshData.Add(new ModelMeshData(
+                primitiveName,
+                vertices,
+                indices,
+                (uint)mesh.MaterialIndex,
+                textureKey: material.TextureKey,
+                diffuseColor: material.DiffuseColor,
+                drawPrimitive: primitive.Primitive,
+                localTransform: localTransform));
+        }
+
+        return meshData;
     }
 
     private static float[] ExtractVertices(Mesh mesh)
     {
         float[] vertices = new float[mesh.VertexCount * VertexStride];
-        bool hasNormals = mesh.Normals != null;
-        bool hasTextureCoords = mesh.TextureCoordinateChannels[0] != null;
+        bool hasNormals = mesh.HasNormals;
+        bool hasTextureCoords = mesh.HasTextureCoords(0);
 
         for (int vertexIndex = 0; vertexIndex < mesh.VertexCount; vertexIndex++)
         {
@@ -166,17 +210,16 @@ public static unsafe class ModelLoader
         return vertices;
     }
 
-    private static uint[] ExtractIndices(Mesh mesh, int meshIndex)
+    private static uint[] ExtractIndices(Mesh mesh, int faceIndexCount)
     {
-        List<uint> indices = new(mesh.FaceCount * 3);
+        List<uint> indices = new(mesh.FaceCount * faceIndexCount);
 
         for (int faceIndex = 0; faceIndex < mesh.FaceCount; faceIndex++)
         {
             Face face = mesh.Faces[faceIndex];
-            if (face.IndexCount != 3)
+            if (face.IndexCount != faceIndexCount)
             {
-                throw new InvalidOperationException(
-                    $"Mesh '{meshIndex}' contains a non-triangle face at index {faceIndex}.");
+                continue;
             }
 
             for (int index = 0; index < face.IndexCount; index++)
@@ -186,6 +229,60 @@ public static unsafe class ModelLoader
         }
 
         return indices.ToArray();
+    }
+
+    private static (GLPrimitiveType Primitive, int FaceIndexCount, bool Include)[] GetRequestedPrimitives(
+        ModelImportOptions options)
+    {
+        return
+        [
+            (GLPrimitiveType.Triangles, 3, options.IncludeTriangles),
+            (GLPrimitiveType.Lines, 2, options.IncludeLines),
+            (GLPrimitiveType.Points, 1, options.IncludePoints)
+        ];
+    }
+
+    private static bool ShouldSkipMesh(Mesh mesh, string meshName, ModelImportOptions options)
+    {
+        if (options.ExcludedMeshNameSubstrings.Any(excluded =>
+                meshName.Contains(excluded, StringComparison.OrdinalIgnoreCase)))
+        {
+            return true;
+        }
+
+        if (!options.MaxMeshExtent.HasValue)
+        {
+            return false;
+        }
+
+        (NumericsVector3 min, NumericsVector3 max) = GetBounds(mesh);
+        NumericsVector3 size = max - min;
+        float largestExtent = Math.Max(size.X, Math.Max(size.Y, size.Z));
+        return largestExtent > options.MaxMeshExtent.Value;
+    }
+
+    private static (NumericsVector3 Min, NumericsVector3 Max) GetBounds(Mesh mesh)
+    {
+        NumericsVector3 min = new(float.PositiveInfinity);
+        NumericsVector3 max = new(float.NegativeInfinity);
+
+        for (int i = 0; i < mesh.VertexCount; i++)
+        {
+            NumericsVector3 position = new(mesh.Vertices[i].X, mesh.Vertices[i].Y, mesh.Vertices[i].Z);
+            min = NumericsVector3.Min(min, position);
+            max = NumericsVector3.Max(max, position);
+        }
+
+        return (min, max);
+    }
+
+    private static NumericsMatrix4x4 ToNumerics(Assimp.Matrix4x4 matrix)
+    {
+        return new NumericsMatrix4x4(
+            matrix.A1, matrix.B1, matrix.C1, matrix.D1,
+            matrix.A2, matrix.B2, matrix.C2, matrix.D2,
+            matrix.A3, matrix.B3, matrix.C3, matrix.D3,
+            matrix.A4, matrix.B4, matrix.C4, matrix.D4);
     }
 
     private static string GetMeshName(Mesh mesh, int meshIndex)
@@ -206,6 +303,20 @@ public static unsafe class ModelLoader
 
         return TryGetMaterialTexture(assimp, material, TextureType.Diffuse, modelDirectory) ??
                TryGetMaterialTexture(assimp, material, TextureType.BaseColor, modelDirectory);
+    }
+
+    private static NumericsVector3 GetDiffuseColor(Assimp.Material material)
+    {
+        if (material is not { HasColorDiffuse: true })
+        {
+            return NumericsVector3.One;
+        }
+
+        Color4D diffuse = material.ColorDiffuse;
+        return new NumericsVector3(
+            Math.Clamp(diffuse.R, 0f, 1f),
+            Math.Clamp(diffuse.G, 0f, 1f),
+            Math.Clamp(diffuse.B, 0f, 1f));
     }
 
     private static string? TryGetMaterialTexture(
@@ -242,4 +353,6 @@ public static unsafe class ModelLoader
         string absolutePath = Path.GetFullPath(Path.Combine(modelDirectory, normalizedRelativePath));
         return System.IO.File.Exists(absolutePath) ? absolutePath : null;
     }
+
+    private sealed record ImportedMaterial(string? TextureKey, NumericsVector3 DiffuseColor);
 }

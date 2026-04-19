@@ -1,6 +1,4 @@
-﻿using System.Numerics;
-using SilkOpenGL;
-using SilkOpenGL.Model;
+﻿using SilkOpenGL;
 using SilkOpenGL.Objects;
 
 namespace Lab6.Scene;

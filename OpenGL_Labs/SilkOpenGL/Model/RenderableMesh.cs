@@ -6,13 +6,13 @@ namespace SilkOpenGL.Model;
 
 public class RenderableMesh : RenderableObject
 {
-    private ModelMeshData _data;
+    private readonly ModelMeshData _data;
     private readonly RenderableObject _parent;
 
     private bool _firstRender = true;
     private DateTime _renderTime = DateTime.Now;
 
-    public RenderableMesh(RenderableObject parent, ModelMeshData data, string shaderKey, string textureKey,
+    public RenderableMesh(RenderableObject parent, ModelMeshData data, string shaderKey, string? textureKey,
         bool isMaterial) : base(
         shaderKey, textureKey, isMaterial)
     {
@@ -26,7 +26,7 @@ public class RenderableMesh : RenderableObject
 
     public int IndexCount { get; }
 
-    public GLEnum DrawPrimitive { get; }
+    public PrimitiveType DrawPrimitive => _data.DrawPrimitive;
 
     public override unsafe void OnRender(double dt)
     {
@@ -55,17 +55,14 @@ public class RenderableMesh : RenderableObject
 
         _gl.Disable(EnableCap.CullFace);
 
-        _shader.SetUniform("uModel", _parent._transform.ModelMatrix);
+        Matrix4x4 meshModel = _data.LocalTransform * _parent._transform.ModelMatrix;
+        _shader.SetUniform("uModel", meshModel);
+        _shader.TrySetUniform("uMaterial.baseColor", _data.DiffuseColor);
 
-        if (Matrix4x4.Invert(_parent._transform.ModelMatrix, out var invModel))
+        if (Matrix4x4.Invert(meshModel, out var invModel))
         {
             Matrix4x4 normalMatrix = Matrix4x4.Transpose(invModel);
-            _shader.SetUniform("uNormalMatrix", normalMatrix);
-        }
-
-        if (_data.DrawPrimitive != GLEnum.Triangles)
-        {
-            Console.WriteLine($"Using VAO {_vao.Handle}, VBO: {_vbo.Handle}, EBO: {_ebo.Handle}");
+            _shader.TrySetUniform("uNormalMatrix", normalMatrix);
         }
 
         _gl.DrawElements(_data.DrawPrimitive, (uint)_indices.Length, DrawElementsType.UnsignedInt, null);
@@ -90,6 +87,15 @@ public class RenderableMesh : RenderableObject
     }
 
     public uint ColorId { get; set; }
+
+    public override unsafe void OnRenderPicking(GL gl, Shader pickingShader)
+    {
+        _vao.Bind();
+        Matrix4x4 meshModel = _data.LocalTransform * _parent._transform.ModelMatrix;
+        pickingShader.SetUniform("uModel", meshModel);
+        gl.DrawElements(_data.DrawPrimitive, (uint)_indices.Length, DrawElementsType.UnsignedInt, null);
+    }
+
     public void OnMouseDown(Vector3 position)
     {
         

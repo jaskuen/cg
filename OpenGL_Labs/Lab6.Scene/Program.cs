@@ -1,10 +1,10 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
 using System.Numerics;
-using Lab6.Scene;
 using Silk.NET.Maths;
 using Silk.NET.Windowing;
 using SilkOpenGL;
+using SilkOpenGL.Camera;
 using SilkOpenGL.Lighting;
 using SilkOpenGL.Model;
 using SilkOpenGL.Store;
@@ -24,15 +24,23 @@ public class Program
         storeManager.AddShader(ShaderName, "Shaders/shader.vert", "Shaders/shader.frag");
         storeManager.AddMaterial(BallMaterial, "Textures/ball/ball.json");
 
-        World world = new World(options, storeManager, CameraMode.Fps);
+        CameraObject camera = new CameraObject
+        {
+            Position = new Vector3(0f, 12f, 30f),
+            NearPlane = 0.1f,
+            FarPlane = 200f
+        };
+        camera.SetMode(CameraMode.Rotate, new Vector3(0f, 1f, 0f));
+
+        World world = new World(options, storeManager, camera, true);
 
         ModelData ballData = ModelLoader.Load("Models/volleyball.obj");
         ModelObject ball = new ModelObject(ShaderName, ballData, BallMaterial, true);
-        ball.Transform.Scale = new Vector3(0.05f);
-        ball.Transform.Position = new Vector3(3f, 1f, 0f);
+        ball.Transform.Scale = new Vector3(0.01f);
+        ball.Transform.Position = new Vector3(3f, 0.55f, 0f);
         ModelObject ball2 = new ModelObject(ShaderName, ballData, BallMaterial, true);
-        ball2.Transform.Scale = new Vector3(0.1f);
-        ball2.Transform.Position = new Vector3(-3f, 1f, 0f);
+        ball2.Transform.Scale = new Vector3(0.01f);
+        ball2.Transform.Position = new Vector3(-3f, 0.55f, -4f);
 
         // ModelData cubeData = ModelLoader.Load("Models/Cube.fbx");
         // for (int i = 0; i < 10; i++)
@@ -43,20 +51,21 @@ public class Program
         //     world.AddObject(cube);
         // }
 
-        ModelData fieldData = ModelLoader.Load("Models/Field.fbx");
+        ModelData fieldData = ModelLoader.Load("Models/field.obj");
         ModelObject field = new ModelObject(ShaderName, fieldData);
-        // field.Transform.Position = new Vector3(0, -3f, 0);
-        // field.Transform.Scale = new Vector3(0.1f);
+        field.Transform.Scale = Vector3.One;
 
         // ModelData bottlesData = ModelLoader.Load("Models/beer-bottle-carrier.obj");
         // ModelObject btls = new ModelObject(ShaderName, bottlesData);
         // btls.Transform.Position = new Vector3(0, -0.1f, 0);
 
-        world.AddLight(new LightEntity(new Vector3(3f, 3f, 3f), new Vector3(2.2f)));
+        world.AddLight(new LightEntity(new Vector3(0f, 18f, 12f), new Vector3(1.4f)));
+        world.AddLight(new LightEntity(new Vector3(-18f, 12f, -18f), new Vector3(0.8f)));
 
         // world.AddObject(btls);
         world.AddObject(field);
-        // world.AddObject(ball2);
+        world.AddObject(ball);
+        world.AddObject(ball2);
         // Scene scene = new Scene(world, field);
         // world.AddObject(scene);
         // world.AddObject(ball);

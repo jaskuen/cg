@@ -1,4 +1,5 @@
 using Silk.NET.OpenGL;
+using SilkOpenGL.Model;
 using SilkOpenGL.Store;
 using SilkOpenGL.Text;
 
@@ -15,9 +16,11 @@ public class ObjectManager
     private readonly FontStore _fontStore;
     private readonly MaterialStore _materialStore;
 
+    // Для оптимизации: группировка по шейдерам (опционально, добавь позже)
     private Dictionary<string, List<RenderableObject>> _objectsByShader = new();
 
-    public ObjectManager(ShaderStore shaderStore, TextureStore textureStore, FontStore fontStore, MaterialStore materialStore)
+    public ObjectManager(ShaderStore shaderStore, TextureStore textureStore, FontStore fontStore,
+        MaterialStore materialStore)
     {
         _shaderStore = shaderStore;
         _textureStore = textureStore;
@@ -27,7 +30,7 @@ public class ObjectManager
 
     public void Add(RenderableObject obj)
     {
-        _toAdd.Add(obj);
+        _toAdd.Add(obj); // Отложенное добавление — безопасно из любого потока
     }
 
     public void Remove(RenderableObject obj)
@@ -38,7 +41,7 @@ public class ObjectManager
 
     public void Update(GL gl, double dt)
     {
-        ProcessPending(gl);
+        ProcessPending(gl); // Сначала добавляем/удаляем
 
         foreach (var obj in _objects)
         {
@@ -48,6 +51,7 @@ public class ObjectManager
 
     public void Render(GL gl, double dt)
     {
+        // Группировка по шейдерам
         var groups = _objects.GroupBy(obj => obj.ShaderKey);
         foreach (var group in groups)
         {
@@ -56,13 +60,8 @@ public class ObjectManager
 
             foreach (var obj in group)
             {
-                if (obj.ClearDepthBeforeRender)
-                {
-                    gl.Clear(ClearBufferMask.DepthBufferBit);
-                }
-
-                obj.BindResources();
-                obj.Render(dt);
+                obj.BindResources(); // Bind текстуры, uniforms
+                obj.Render(dt); // Только draw call
             }
         }
     }
@@ -74,13 +73,13 @@ public class ObjectManager
     {
         foreach (var obj in _toAdd)
         {
-            obj.Init(_shaderStore, _textureStore, _materialStore, gl);
+            obj.Init(_shaderStore, _textureStore, _materialStore, gl); // Инициализация ресурсов
 
             if (obj is IText textObj)
             {
                 textObj.SetMetadata(_fontStore);
             }
-
+            
             _objects.Add(obj);
         }
 

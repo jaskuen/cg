@@ -10,6 +10,8 @@ public class BufferObject<TDataType> : IDisposable
     private uint _handle;
     private BufferTargetARB _bufferType;
     private GL _gl;
+    
+    internal uint Handle => _handle;
 
     public unsafe BufferObject(GL gl, Span<TDataType> data, BufferTargetARB bufferType)
     {

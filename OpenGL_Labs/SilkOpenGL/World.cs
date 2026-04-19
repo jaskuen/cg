@@ -6,6 +6,7 @@ using Silk.NET.OpenGL;
 using Silk.NET.Windowing;
 using SilkOpenGL.Camera;
 using SilkOpenGL.Lighting;
+using SilkOpenGL.Model;
 using SilkOpenGL.Objects;
 using SilkOpenGL.Store;
 
@@ -67,7 +68,8 @@ public class World
     {
     }
 
-    public World(WindowOptions windowOptions, StoreManager storeManager, CameraObject? camera = null, bool useMouseCameraMove = false)
+    public World(WindowOptions windowOptions, StoreManager storeManager, CameraObject? camera = null,
+        bool useMouseCameraMove = false)
         : this(windowOptions, storeManager.ShaderStore, storeManager.TextureStore, storeManager.FontStore,
             storeManager.MaterialStore, camera, useMouseCameraMove)
     {
@@ -363,6 +365,14 @@ public class World
         if (obj is RenderableObject renderable)
         {
             _objectManager.Add(renderable);
+
+            if (obj is ModelObject modelObject)
+            {
+                foreach (var mesh in modelObject.Meshes)
+                {
+                    AddObject(mesh);
+                }
+            }
         }
         else
         {

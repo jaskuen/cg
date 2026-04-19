@@ -11,7 +11,7 @@ public sealed class ModelMeshData
         uint materialIndex = 0,
         string? materialKey = null,
         string? textureKey = null,
-        PrimitiveType drawPrimitive = PrimitiveType.Triangles )
+        GLEnum drawPrimitive = GLEnum.Triangles )
     {
         Name = name;
         Vertices = vertices;
@@ -35,7 +35,7 @@ public sealed class ModelMeshData
 
     public string? TextureKey { get; init; }
 
-    public PrimitiveType DrawPrimitive { get; }
+    public GLEnum DrawPrimitive { get; }
 
     public int VertexStride => 8;
 }

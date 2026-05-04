@@ -32,8 +32,6 @@ public class RenderableMesh : RenderableObject
     public override unsafe void OnRender(double dt)
     {
         _vao.Bind();
-        // Re-associate the mesh buffers before DrawElements; otherwise stale element-buffer
-        // state can make later meshes read the wrong indices.
         _ebo.Bind();
         _vbo.Bind();
         if (_indices.Length == 0)
@@ -83,7 +81,6 @@ public class RenderableMesh : RenderableObject
     public override unsafe void OnRenderPicking(GL gl, Shader pickingShader)
     {
         _vao.Bind();
-        // Keep picking in sync with the normal render path.
         _ebo.Bind();
         _vbo.Bind();
         if (_indices.Length == 0)

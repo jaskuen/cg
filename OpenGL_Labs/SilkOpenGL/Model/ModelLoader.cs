@@ -326,7 +326,6 @@ public static unsafe class ModelLoader
 
     private static NumericsMatrix4x4 ToNumerics(Assimp.Matrix4x4 matrix)
     {
-        // Assimp stores column-vector transforms; System.Numerics is used here with row-vector composition.
         return new NumericsMatrix4x4(
             matrix.A1, matrix.B1, matrix.C1, matrix.D1,
             matrix.A2, matrix.B2, matrix.C2, matrix.D2,

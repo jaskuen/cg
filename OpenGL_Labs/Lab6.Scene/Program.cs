@@ -1,6 +1,7 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
 using System.Numerics;
+using Lab6.Scene;
 using Silk.NET.Maths;
 using Silk.NET.Windowing;
 using SilkOpenGL;
@@ -32,7 +33,7 @@ public class Program
         };
         camera.SetMode(CameraMode.Fps, new Vector3(0f, 1f, 0f));
 
-        World world = new World(options, storeManager, camera, true);
+        World world = new World(options, storeManager, camera, true, true);
 
         ModelData ballData = ModelLoader.Load("Models/volleyball.obj");
         ModelObject ball = new ModelObject(ShaderName, ballData, BallMaterial, true);
@@ -40,40 +41,31 @@ public class Program
         ball.Transform.Position = new Vector3(3f, 0.55f, 0f);
         ModelObject ball2 = new ModelObject(ShaderName, ballData, BallMaterial, true);
         ball2.Transform.Scale = new Vector3(0.01f);
-        ball2.Transform.Position = new Vector3(-3f, 0.55f, -4f);
-
-        // ModelData cubeData = ModelLoader.Load("Models/Cube.fbx");
-        // for (int i = 0; i < 10; i++)
-        // {
-        //     ModelObject cube = new ModelObject(ShaderName, cubeData, BallMaterial, true);
-        //     cube.Transform.Scale = new Vector3(0.1f);
-        //     cube.Transform.Position = new Vector3(3f, 5f - i * 0.5f, 0f);
-        //     world.AddObject(cube);
-        // }
 
         ModelData fieldData = ModelLoader.Load("Models/field.obj");
         ModelObject field = new ModelObject(ShaderName, fieldData);
         field.Transform.Scale = Vector3.One;
+        
+        ModelData canonData = ModelLoader.Load("Models/canon.glb");
+        ModelObject canon = new ModelObject(ShaderName, canonData);
+        canon.Transform.Scale = new Vector3(0.08f);
+        canon.Transform.Position = new Vector3(-3f, 0.5f, 20f);
+        
+        ModelData kageyamaData = ModelLoader.Load("Models/kageyama.glb");
+        ModelObject kageyama = new ModelObject(ShaderName, kageyamaData);
+        kageyama.Transform.Scale = new Vector3(0.04f);
 
-        ModelData bottlesData = ModelLoader.Load("Models/beer.fbx");
-        ModelObject btls = new ModelObject(ShaderName, bottlesData);
-        btls.Transform.Position = new Vector3(0, -0.1f, 0);
-
-        ModelData bugatti = ModelLoader.Load("Models/bugatti.obj");
-        ModelObject car = new ModelObject(ShaderName, bugatti);
-        btls.Transform.Position = new Vector3(0, -0.1f, 0);
+        Scene scene = new Scene(world, ball2, kageyama);
 
         world.AddLight(new LightEntity(new Vector3(0f, 18f, 12f), new Vector3(1.4f)));
         world.AddLight(new LightEntity(new Vector3(-18f, 12f, -18f), new Vector3(0.8f)));
 
-        // world.AddObject(btls);
         world.AddObject(field);
         world.AddObject(ball);
         world.AddObject(ball2);
-        // Scene scene = new Scene(world, field);
-        // world.AddObject(scene);
-        // world.AddObject(ball);
-        // world.AddObject(car);
+        world.AddObject(canon);
+        world.AddObject(kageyama);
+        world.AddObject(scene);
         world.Run();
     }
 }

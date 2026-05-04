@@ -57,8 +57,6 @@ public class ModelObject : RenderableObject
         }
     }
 
-    public Transform Transform => _transform;
-
     public override void BindResources()
     {
         ResetMaterialUniforms();

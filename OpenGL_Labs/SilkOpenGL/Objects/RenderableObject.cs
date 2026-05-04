@@ -26,6 +26,8 @@ public abstract class RenderableObject : UpdateableObject, IDisposable
 
     protected internal Transform _transform;
 
+    public Transform Transform => _transform;
+
     private bool _initialized;
 
     public Vector3 Position => _transform.Position;

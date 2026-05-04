@@ -81,6 +81,12 @@
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
       <None Remove="Models\beer-bottle-carrier-002.mtl" />
+      <None Update="Models\canon.glb">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
+      <None Update="Models\kageyama.glb">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
     </ItemGroup>
 
 </Project>

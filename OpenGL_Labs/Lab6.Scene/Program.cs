@@ -30,7 +30,7 @@ public class Program
             NearPlane = 0.1f,
             FarPlane = 200f
         };
-        camera.SetMode(CameraMode.Rotate, new Vector3(0f, 1f, 0f));
+        camera.SetMode(CameraMode.Fps, new Vector3(0f, 1f, 0f));
 
         World world = new World(options, storeManager, camera, true);
 
@@ -55,9 +55,13 @@ public class Program
         ModelObject field = new ModelObject(ShaderName, fieldData);
         field.Transform.Scale = Vector3.One;
 
-        // ModelData bottlesData = ModelLoader.Load("Models/beer-bottle-carrier.obj");
-        // ModelObject btls = new ModelObject(ShaderName, bottlesData);
-        // btls.Transform.Position = new Vector3(0, -0.1f, 0);
+        ModelData bottlesData = ModelLoader.Load("Models/beer.fbx");
+        ModelObject btls = new ModelObject(ShaderName, bottlesData);
+        btls.Transform.Position = new Vector3(0, -0.1f, 0);
+
+        ModelData bugatti = ModelLoader.Load("Models/bugatti.obj");
+        ModelObject car = new ModelObject(ShaderName, bugatti);
+        btls.Transform.Position = new Vector3(0, -0.1f, 0);
 
         world.AddLight(new LightEntity(new Vector3(0f, 18f, 12f), new Vector3(1.4f)));
         world.AddLight(new LightEntity(new Vector3(-18f, 12f, -18f), new Vector3(0.8f)));

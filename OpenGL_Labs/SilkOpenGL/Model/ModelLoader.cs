@@ -34,7 +34,7 @@ public static unsafe class ModelLoader
             ValidateScene(assimp, scene, modelPath);
 
             string modelDirectory = Path.GetDirectoryName(modelPath) ?? string.Empty;
-            Dictionary<int, ImportedMaterial> materials = BuildMaterialMap(assimp, scene, modelDirectory);
+            Dictionary<int, ImportedMaterial> materials = BuildMaterialMap(assimp, scene, modelDirectory, modelPath);
             List<ModelMeshData> meshes = [];
 
             ProcessNode(scene.RootNode, scene, materials, meshes, NumericsMatrix4x4.Identity, options);
@@ -65,7 +65,8 @@ public static unsafe class ModelLoader
     private static Dictionary<int, ImportedMaterial> BuildMaterialMap(
         AssimpContext assimp,
         Scene scene,
-        string modelDirectory)
+        string modelDirectory,
+        string modelPath)
     {
         Dictionary<int, ImportedMaterial> materials = [];
         if (scene.Materials == null)
@@ -77,7 +78,7 @@ public static unsafe class ModelLoader
         {
             Assimp.Material material = scene.Materials[materialIndex];
             materials[materialIndex] = new ImportedMaterial(
-                ResolveTexturePath(assimp, material, modelDirectory),
+                ResolveTexturePath(assimp, scene, material, modelDirectory, modelPath),
                 GetDiffuseColor(material));
         }
 
@@ -341,16 +342,18 @@ public static unsafe class ModelLoader
 
     private static string? ResolveTexturePath(
         AssimpContext assimp,
+        Scene scene,
         Assimp.Material material,
-        string modelDirectory)
+        string modelDirectory,
+        string modelPath)
     {
         if (material == null)
         {
             return null;
         }
 
-        return TryGetMaterialTexture(assimp, material, TextureType.Diffuse, modelDirectory) ??
-               TryGetMaterialTexture(assimp, material, TextureType.BaseColor, modelDirectory);
+        return TryGetMaterialTexture(assimp, scene, material, TextureType.Diffuse, modelDirectory, modelPath) ??
+               TryGetMaterialTexture(assimp, scene, material, TextureType.BaseColor, modelDirectory, modelPath);
     }
 
     private static NumericsVector3 GetDiffuseColor(Assimp.Material material)
@@ -369,9 +372,11 @@ public static unsafe class ModelLoader
 
     private static string? TryGetMaterialTexture(
         AssimpContext assimp,
+        Scene scene,
         Assimp.Material material,
         TextureType textureType,
-        string modelDirectory)
+        string modelDirectory,
+        string modelPath)
     {
         if (material.GetMaterialTextureCount(textureType) == 0)
         {
@@ -389,9 +394,14 @@ public static unsafe class ModelLoader
         }
 
         string? rawTexturePath = texture.FilePath;
-        if (string.IsNullOrWhiteSpace(rawTexturePath) || rawTexturePath.StartsWith('*'))
+        if (string.IsNullOrWhiteSpace(rawTexturePath))
         {
             return null;
+        }
+
+        if (rawTexturePath.StartsWith('*'))
+        {
+            return ExtractEmbeddedTexture(scene, rawTexturePath, texture.TextureIndex, modelPath);
         }
 
         string normalizedTexturePath = rawTexturePath
@@ -421,6 +431,140 @@ public static unsafe class ModelLoader
 
         Console.WriteLine($"Model texture not found: '{rawTexturePath}'");
         return null;
+    }
+
+    private static string? ExtractEmbeddedTexture(Scene scene, string rawTexturePath, int textureIndex, string modelPath)
+    {
+        if (scene.Textures == null || scene.TextureCount == 0)
+        {
+            return null;
+        }
+
+        int index = textureIndex;
+        if (rawTexturePath.Length > 1 &&
+            int.TryParse(rawTexturePath[1..], out int parsedIndex))
+        {
+            index = parsedIndex;
+        }
+
+        EmbeddedTexture? embeddedTexture = index >= 0 && index < scene.TextureCount
+            ? scene.Textures[index]
+            : scene.Textures.FirstOrDefault(x => string.Equals(x.Filename, rawTexturePath, StringComparison.Ordinal));
+
+        if (embeddedTexture == null)
+        {
+            Console.WriteLine($"Embedded model texture not found: '{rawTexturePath}'");
+            return null;
+        }
+
+        string cacheDirectory = Path.Combine(
+            Path.GetTempPath(),
+            "OpenGL_Labs",
+            "EmbeddedModelTextures",
+            StableCacheKey(modelPath));
+        Directory.CreateDirectory(cacheDirectory);
+
+        string extension = EmbeddedTextureExtension(embeddedTexture);
+        string fileName = string.IsNullOrWhiteSpace(embeddedTexture.Filename)
+            ? $"texture_{index}{extension}"
+            : $"{Path.GetFileNameWithoutExtension(embeddedTexture.Filename)}_{index}{extension}";
+        string cachePath = Path.Combine(cacheDirectory, SanitizeFileName(fileName));
+
+        if (File.Exists(cachePath))
+        {
+            return cachePath;
+        }
+
+        if (embeddedTexture.HasCompressedData)
+        {
+            File.WriteAllBytes(cachePath, embeddedTexture.CompressedData);
+            return cachePath;
+        }
+
+        if (embeddedTexture.HasNonCompressedData)
+        {
+            WriteBmp(cachePath, embeddedTexture.Width, embeddedTexture.Height, embeddedTexture.NonCompressedData);
+            return cachePath;
+        }
+
+        return null;
+    }
+
+    private static string EmbeddedTextureExtension(EmbeddedTexture texture)
+    {
+        if (!string.IsNullOrWhiteSpace(texture.CompressedFormatHint))
+        {
+            string hint = texture.CompressedFormatHint.Trim().TrimStart('.');
+            if (hint.Equals("jpeg", StringComparison.OrdinalIgnoreCase))
+            {
+                hint = "jpg";
+            }
+
+            return $".{hint.ToLowerInvariant()}";
+        }
+
+        string? filenameExtension = Path.GetExtension(texture.Filename);
+        return string.IsNullOrWhiteSpace(filenameExtension) ? ".bmp" : filenameExtension;
+    }
+
+    private static string StableCacheKey(string value)
+    {
+        uint hash = 2166136261;
+        foreach (char c in Path.GetFullPath(value))
+        {
+            hash ^= c;
+            hash *= 16777619;
+        }
+
+        return hash.ToString("x8");
+    }
+
+    private static string SanitizeFileName(string fileName)
+    {
+        foreach (char invalid in Path.GetInvalidFileNameChars())
+        {
+            fileName = fileName.Replace(invalid, '_');
+        }
+
+        return fileName;
+    }
+
+    private static void WriteBmp(string path, int width, int height, IReadOnlyList<Texel> texels)
+    {
+        int rowStride = width * 4;
+        int pixelDataSize = rowStride * height;
+        int fileSize = 14 + 40 + pixelDataSize;
+
+        using FileStream stream = File.Create(path);
+        using BinaryWriter writer = new(stream);
+
+        writer.Write((byte)'B');
+        writer.Write((byte)'M');
+        writer.Write(fileSize);
+        writer.Write((ushort)0);
+        writer.Write((ushort)0);
+        writer.Write(14 + 40);
+
+        writer.Write(40);
+        writer.Write(width);
+        writer.Write(-height);
+        writer.Write((ushort)1);
+        writer.Write((ushort)32);
+        writer.Write(0);
+        writer.Write(pixelDataSize);
+        writer.Write(2835);
+        writer.Write(2835);
+        writer.Write(0);
+        writer.Write(0);
+
+        for (int i = 0; i < width * height; i++)
+        {
+            Texel texel = texels[i];
+            writer.Write(texel.B);
+            writer.Write(texel.G);
+            writer.Write(texel.R);
+            writer.Write(texel.A);
+        }
     }
 
     private sealed record ImportedMaterial(string? TextureKey, NumericsVector3 DiffuseColor);

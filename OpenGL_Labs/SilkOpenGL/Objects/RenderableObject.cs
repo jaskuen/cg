@@ -1,4 +1,4 @@
-﻿using System.Numerics;
+using System.Numerics;
 using Silk.NET.OpenGL;
 using SilkOpenGL.Store;
 
@@ -24,11 +24,16 @@ public abstract class RenderableObject : UpdateableObject, IDisposable
     public string? MaterialKey { get; }
     protected Material? _material;
 
-    protected Transform _transform;
+    protected internal Transform _transform;
+
+    public Transform Transform => _transform;
 
     private bool _initialized;
 
     public Vector3 Position => _transform.Position;
+    public bool ClearDepthBeforeRender { get; set; }
+
+    protected virtual Matrix4x4 WorldModelMatrix => _transform.ModelMatrix;
 
     private RenderableObject()
     {
@@ -40,8 +45,13 @@ public abstract class RenderableObject : UpdateableObject, IDisposable
         ShaderKey = shaderKey;
     }
 
-    public RenderableObject(string shaderKey, string textureKey, bool isMaterial = false) : this(shaderKey)
+    public RenderableObject(string shaderKey, string? textureKey, bool isMaterial = false) : this(shaderKey)
     {
+        if (string.IsNullOrWhiteSpace(textureKey))
+        {
+            return;
+        }
+
         if (isMaterial)
         {
             MaterialKey = textureKey;
@@ -54,6 +64,11 @@ public abstract class RenderableObject : UpdateableObject, IDisposable
 
     public void Render(double dt)
     {
+        if (_vao != null)
+        {
+            _vao.Bind();
+        }
+
         OnRender(dt);
 
         _gl.BindVertexArray(0);
@@ -66,7 +81,14 @@ public abstract class RenderableObject : UpdateableObject, IDisposable
         if (_initialized) return;
         _gl = gl;
         _shader = shaderStore.GetShader(ShaderKey);
-        _texture = TextureKey != null ? textureStore.GetTexture(TextureKey) : null;
+        if (TextureKey != null && !textureStore.ContainsTexture(TextureKey) && File.Exists(TextureKey))
+        {
+            textureStore.CreateTexture(TextureKey, TextureKey);
+        }
+
+        _texture = TextureKey != null && textureStore.ContainsTexture(TextureKey)
+            ? textureStore.GetTexture(TextureKey)
+            : null;
         _material = MaterialKey != null ? materialStore.GetMaterial(MaterialKey) : null;
 
         OnInit();
@@ -79,77 +101,105 @@ public abstract class RenderableObject : UpdateableObject, IDisposable
     {
         if (_texture != null)
         {
+            _texture.Bind();
+            _shader.TrySetUniform("uTexture", 0);
             _shader.TrySetUniform("uTextureId", _texture.TextureId);
+            _shader.TrySetUniform("uHandle", _texture.TextureId);
+            _shader.TrySetUniform("uHasTexture", 1);
+        }
+        else
+        {
+            _shader.TrySetUniform("uTexture", 0);
+            _shader.TrySetUniform("uTextureId", 0);
+            _shader.TrySetUniform("uHandle", 0);
+            _shader.TrySetUniform("uHasTexture", 0);
         }
 
-        if (_material != null)
+        ResetMaterialUniforms();
+
+        if (_material == null)
         {
-            if (_material.Albedo != null)
+            if (_texture != null)
             {
-                _shader.TrySetUniform("uMaterial.albedoMap", _material.Albedo.TextureId);
+                _shader.TrySetUniform("uMaterial.albedoMap", _texture.TextureId);
                 _shader.TrySetUniform("uMaterial.hasAlbedoMap", 1);
             }
-            else
-            {
-                _shader.TrySetUniform("uMaterial.hasAlbedoMap", 0);
-            }
 
-            if (_material.Normal != null)
-            {
-                _shader.TrySetUniform("uMaterial.normalMap", _material.Normal.TextureId);
-                _shader.TrySetUniform("uMaterial.hasNormalMap", 1);
-            }
-            else
-            {
-                _shader.TrySetUniform("uMaterial.hasNormalMap", 0);
-            }
+            return;
+        }
 
-            if (_material.Metallic != null)
-            {
-                _shader.TrySetUniform("uMaterial.metallicMap", _material.Metallic.TextureId);
-                _shader.TrySetUniform("uMaterial.hasMetallicMap", 1);
-            }
-            else
-            {
-                _shader.TrySetUniform("uMaterial.hasMetallicMap", 0);
-            }
+        BindMaterialUniforms(_material);
+    }
 
-            if (_material.Roughness != null)
-            {
-                _shader.TrySetUniform("uMaterial.roughnessMap", _material.Roughness.TextureId);
-                _shader.TrySetUniform("uMaterial.hasRoughnessMap", 1);
-            }
-            else
-            {
-                _shader.TrySetUniform("uMaterial.hasRoughnessMap", 0);
-            }
+    private void ResetMaterialUniforms()
+    {
+        _shader.TrySetUniform("uMaterial.albedoMap", 0);
+        _shader.TrySetUniform("uMaterial.normalMap", 0);
+        _shader.TrySetUniform("uMaterial.metallicMap", 0);
+        _shader.TrySetUniform("uMaterial.roughnessMap", 0);
+        _shader.TrySetUniform("uMaterial.aoMap", 0);
+        _shader.TrySetUniform("uMaterial.hasAlbedoMap", 0);
+        _shader.TrySetUniform("uMaterial.hasNormalMap", 0);
+        _shader.TrySetUniform("uMaterial.hasMetallicMap", 0);
+        _shader.TrySetUniform("uMaterial.hasRoughnessMap", 0);
+        _shader.TrySetUniform("uMaterial.hasAoMap", 0);
+        _shader.TrySetUniform("uMaterial.baseColor", Vector3.One);
+    }
 
-            if (_material.Ao != null)
-            {
-                _shader.TrySetUniform("uMaterial.aoMap", _material.Ao.TextureId);
-                _shader.TrySetUniform("uMaterial.hasAoMap", 1);
-            }
-            else
-            {
-                _shader.TrySetUniform("uMaterial.hasAoMap", 0);
-            }
+    private void BindMaterialUniforms(Material material)
+    {
+        if (material.Albedo != null)
+        {
+            _shader.TrySetUniform("uMaterial.albedoMap", material.Albedo.TextureId);
+            _shader.TrySetUniform("uMaterial.hasAlbedoMap", 1);
+        }
+
+        if (material.Normal != null)
+        {
+            _shader.TrySetUniform("uMaterial.normalMap", material.Normal.TextureId);
+            _shader.TrySetUniform("uMaterial.hasNormalMap", 1);
+        }
+
+        if (material.Metallic != null)
+        {
+            _shader.TrySetUniform("uMaterial.metallicMap", material.Metallic.TextureId);
+            _shader.TrySetUniform("uMaterial.hasMetallicMap", 1);
+        }
+
+        if (material.Roughness != null)
+        {
+            _shader.TrySetUniform("uMaterial.roughnessMap", material.Roughness.TextureId);
+            _shader.TrySetUniform("uMaterial.hasRoughnessMap", 1);
+        }
+
+        if (material.Ao != null)
+        {
+            _shader.TrySetUniform("uMaterial.aoMap", material.Ao.TextureId);
+            _shader.TrySetUniform("uMaterial.hasAoMap", 1);
         }
     }
 
     public Vector3[] GetWorldVertices(int verticesCount)
     {
+        if (verticesCount <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(verticesCount), "Vertex stride must be positive.");
+        }
+
         int vertexCount = _vertices.Length / verticesCount;
         Vector3[] worldPoints = new Vector3[vertexCount];
+        Matrix4x4 modelMatrix = WorldModelMatrix;
 
         for (int i = 0; i < vertexCount; i++)
         {
+            int vertexOffset = i * verticesCount;
             Vector3 localPos = new Vector3(
-                _vertices[i * 3],
-                _vertices[i * 3 + 1],
-                _vertices[i * 3 + 2]
+                _vertices[vertexOffset],
+                _vertices[vertexOffset + 1],
+                _vertices[vertexOffset + 2]
             );
 
-            worldPoints[i] = Vector3.Transform(localPos, _transform.ModelMatrix);
+            worldPoints[i] = Vector3.Transform(localPos, modelMatrix);
         }
 
         return worldPoints;
@@ -168,6 +218,7 @@ public abstract class RenderableObject : UpdateableObject, IDisposable
         _vbo = null;
         _ebo = null;
         _vao = null;
+        _initialized = false;
     }
 
     public void Dispose()

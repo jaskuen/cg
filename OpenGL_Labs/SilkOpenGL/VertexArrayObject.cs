@@ -9,6 +9,8 @@ public class VertexArrayObject<TVertexType, TIndexType> : IDisposable
     private uint _handle;
     private GL _gl;
 
+    internal uint Handle => _handle;
+
     public VertexArrayObject(GL gl, BufferObject<TVertexType> vbo, BufferObject<TIndexType> ebo)
     {
         _gl = gl;
@@ -22,9 +24,9 @@ public class VertexArrayObject<TVertexType, TIndexType> : IDisposable
     public unsafe void VertexAttributePointer(uint index, int count, VertexAttribPointerType type, uint vertexSize,
         int offSet)
     {
+        _gl.EnableVertexAttribArray(index);
         _gl.VertexAttribPointer(index, count, type, false, vertexSize * (uint)sizeof(TVertexType),
             (void*)(offSet * sizeof(TVertexType)));
-        _gl.EnableVertexAttribArray(index);
     }
 
     public void Bind()

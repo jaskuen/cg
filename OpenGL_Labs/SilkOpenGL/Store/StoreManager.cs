@@ -1,4 +1,4 @@
-﻿namespace SilkOpenGL.Store;
+namespace SilkOpenGL.Store;
 
 public class StoreManager
 {

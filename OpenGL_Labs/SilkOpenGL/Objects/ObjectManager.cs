@@ -1,4 +1,4 @@
-﻿using Silk.NET.OpenGL;
+using Silk.NET.OpenGL;
 using SilkOpenGL.Store;
 using SilkOpenGL.Text;
 
@@ -18,7 +18,8 @@ public class ObjectManager
     // Для оптимизации: группировка по шейдерам (опционально, добавь позже)
     private Dictionary<string, List<RenderableObject>> _objectsByShader = new();
 
-    public ObjectManager(ShaderStore shaderStore, TextureStore textureStore, FontStore fontStore, MaterialStore materialStore)
+    public ObjectManager(ShaderStore shaderStore, TextureStore textureStore, FontStore fontStore,
+        MaterialStore materialStore)
     {
         _shaderStore = shaderStore;
         _textureStore = textureStore;
@@ -28,13 +29,31 @@ public class ObjectManager
 
     public void Add(RenderableObject obj)
     {
+        if (_objects.Contains(obj) || _toAdd.Contains(obj))
+        {
+            return;
+        }
+
+        if (_toRemove.Remove(obj))
+        {
+            _objects.Add(obj);
+            return;
+        }
+
         _toAdd.Add(obj); // Отложенное добавление — безопасно из любого потока
     }
 
     public void Remove(RenderableObject obj)
     {
-        _toRemove.Add(obj);
-        _objects.Remove(obj);
+        if (_toAdd.Remove(obj))
+        {
+            return;
+        }
+
+        if (_objects.Remove(obj))
+        {
+            _toRemove.Add(obj);
+        }
     }
 
     public void Update(GL gl, double dt)
@@ -79,18 +98,13 @@ public class ObjectManager
             }
             
             _objects.Add(obj);
-
-            // Если используешь группировку:
-            // if (!_objectsByShader.ContainsKey(obj.ShaderKey)) _objectsByShader[obj.ShaderKey] = new();
-            // _objectsByShader[obj.ShaderKey].Add(obj);
         }
 
         _toAdd.Clear();
 
         foreach (var obj in _toRemove)
         {
-            obj.OnClose(); // Очистка ресурсов
-            // _objectsByShader[obj.ShaderKey]?.Remove(obj);
+            obj.OnClose();
         }
 
         _toRemove.Clear();

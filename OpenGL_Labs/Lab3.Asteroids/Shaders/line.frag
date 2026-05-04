@@ -1,4 +1,4 @@
-﻿#version 330 core
+#version 330 core
 
 uniform vec4 uColor = vec4(1.0, 1.0, 1.0, 1.0);
 in vec3 vWorldPos;

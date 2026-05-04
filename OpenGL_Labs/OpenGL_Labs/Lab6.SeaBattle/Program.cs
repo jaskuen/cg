@@ -12,10 +12,10 @@ namespace Lab6.SeaBattle;
 
 internal static class Program
 {
-    public const string BasicShader = "SeaBattleBasic";
-    public const string SkyShader = "SeaBattleSky";
+    public const string BasicShader = "Basic";
+    public const string SkyShader = "Sky";
 
-    private static void Main()
+    private static void Main() 
     {
         WindowOptions options = WindowOptions.Default;
         options.Size = new Vector2D<int>(1280, 720);

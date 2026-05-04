@@ -15,7 +15,7 @@ internal sealed class SeaBattleModelAssets
             [ShipVariant.Cruiser] = LoadShip("Models/warship2.glb", 3.8f),
             [ShipVariant.Carrier] = LoadShip("Models/warship3.glb", 4.5f)
         };
-        Torpedo = LoadForwardModel("Models/torpedo.glb", 0.95f, includeYForForward: true);
+        Torpedo = LoadForwardModel("Models/torpedo.obj", 0.95f, includeYForForward: true, flipModel: true);
     }
 
     public ModelAsset Torpedo { get; }
@@ -27,7 +27,8 @@ internal sealed class SeaBattleModelAssets
         return LoadForwardModel(path, targetLength, includeYForForward: false);
     }
 
-    private static ModelAsset LoadForwardModel(string path, float targetLength, bool includeYForForward)
+    private static ModelAsset LoadForwardModel(string path, float targetLength, bool includeYForForward,
+        bool flipModel = false)
     {
         ModelData data = ModelLoader.Load(path);
         ModelBounds bounds = CalculateBounds(data);
@@ -36,6 +37,12 @@ internal sealed class SeaBattleModelAssets
             ? MathF.Max(size.X, MathF.Max(size.Y, size.Z))
             : MathF.Max(size.X, size.Z);
         float scale = length > 0.0001f ? targetLength / length : 1f;
+
+        if (flipModel)
+        {
+            scale *= -1;
+        }
+
         Vector3 forwardAxis = DominantAxis(size, includeYForForward);
         float waterlineOffset = -bounds.Min.Y * scale;
 

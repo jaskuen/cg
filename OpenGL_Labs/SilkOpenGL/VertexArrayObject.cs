@@ -19,8 +19,6 @@ public class VertexArrayObject<TVertexType, TIndexType> : IDisposable
         Bind();
         vbo.Bind();
         ebo.Bind();
-
-        Console.WriteLine($"VAO {_handle} created, VBO: {vbo.Handle}, EBO: {ebo.Handle}");
     }
 
     public unsafe void VertexAttributePointer(uint index, int count, VertexAttribPointerType type, uint vertexSize,

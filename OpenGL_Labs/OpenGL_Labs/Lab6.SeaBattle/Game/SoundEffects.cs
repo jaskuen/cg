@@ -1,26 +1,38 @@
-﻿namespace Lab6.SeaBattle.Game;
+﻿using System.Media;
+using NAudio.Wave;
+using Plugin.SimpleAudioPlayer;
+
+namespace Lab6.SeaBattle.Game;
 
 internal static class SoundEffects
 {
-    public static void Shot() => Beep(720, 55);
-    public static void Explosion() => Beep(180, 120);
-    public static void Miss() => Beep(260, 80);
-    public static void Cooldown() => Beep(460, 35);
+    private static string _shot = "torpedo_start.wav";
+    private static string _explosion = "hit.wav";
+    private static string _miss = "damage.wav";
+    private static string _cooldown = "cooldown.wav";
+    private static string _gameOver = "game_over.wav";
 
-    private static void Beep(int frequency, int durationMs)
+    public static void Shot() => PlaySound(_shot);
+    public static void Explosion() => PlaySound(_explosion);
+    public static void Miss() => PlaySound(_miss);
+    public static void Cooldown() => PlaySound(_cooldown);
+    public static void GameOver() => PlaySound(_gameOver);
+
+    private static void PlaySound(string path)
     {
         Task.Run(() =>
         {
             try
             {
-                if (OperatingSystem.IsWindows())
-                {
-                    Console.Beep(frequency, durationMs);
-                }
+                WaveStream sound = new AudioFileReader($"Sounds/{path}");
+                WaveOutEvent output = new WaveOutEvent();
+                
+                output.Init(sound);
+                output.Play();
             }
-            catch
+            catch (Exception e)
             {
-                // Sound is a bonus feature; gameplay should continue if the host cannot beep.
+                Console.WriteLine(e.Message);
             }
         });
     }

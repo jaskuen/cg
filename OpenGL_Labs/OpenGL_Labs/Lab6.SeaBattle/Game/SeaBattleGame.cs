@@ -10,7 +10,7 @@ namespace Lab6.SeaBattle.Game;
 
 public sealed class SeaBattleGame : UpdateableObject, IKeyboardClickable
 {
-    private const float CooldownSeconds = 2.3f;
+    private const float TorpedoCooldownSeconds = 1.5f;
     private const float ShipLimitX = 19f;
     private const float AimTurnSpeed = 1.45f;
     private const float MaxAimYaw = 0.92f;
@@ -21,7 +21,6 @@ public sealed class SeaBattleGame : UpdateableObject, IKeyboardClickable
     private readonly Random _random = new();
     private readonly List<EnemyShip> _ships = [];
     private readonly List<Torpedo> _torpedoes = [];
-    private readonly List<PrimitiveObject> _staticObjects = [];
     private readonly List<PrimitiveObject> _aimObjects = [];
 
     private TextObject? _hud;
@@ -47,12 +46,11 @@ public sealed class SeaBattleGame : UpdateableObject, IKeyboardClickable
         PrimitiveObject sea = new(Shader, MeshFactory.WaterPlane(55f, 42f), new Vector3(0.02f, 0.25f, 0.42f), 0.18f,
             0.05f, 0.88f);
         sea.Transform.Position = new Vector3(0f, -0.06f, -14f);
-        _staticObjects.Add(sea);
         _world.AddObject(sea);
 
         CreateAimArrow();
 
-        _hud = new TextObject(new Vector3(-7.7f, 4.05f, -5.4f), HudText(), 0.18f, Color.White);
+        _hud = new TextObject(new Vector3(-3.7f, 7.05f, -5.4f), HudText(), 0.18f, Color.White);
         _world.AddObject(_hud);
     }
 
@@ -78,12 +76,15 @@ public sealed class SeaBattleGame : UpdateableObject, IKeyboardClickable
             _spawnTimer = RandomRange(1.35f, 2.4f);
         }
 
-        UpdateShips(delta);
-        UpdateTorpedoes(delta);
-        ResolveCollisions();
-        CleanupRemoved();
-        UpdateAimArrow();
-        UpdateHud();
+        if (!_isGameOver)
+        {
+            UpdateShips(delta);
+            UpdateTorpedoes(delta);
+            ResolveCollisions();
+            CleanupRemoved();
+            UpdateAimArrow();
+            UpdateHud();
+        }
     }
 
     private void Fire()
@@ -100,7 +101,7 @@ public sealed class SeaBattleGame : UpdateableObject, IKeyboardClickable
         Torpedo torpedo = new(_assets.Torpedo, origin, direction, 14.5f);
         _world.AddObject(torpedo.Renderable);
         _torpedoes.Add(torpedo);
-        _cooldownRemaining = CooldownSeconds;
+        _cooldownRemaining = TorpedoCooldownSeconds;
         SoundEffects.Shot();
     }
 
@@ -276,8 +277,10 @@ public sealed class SeaBattleGame : UpdateableObject, IKeyboardClickable
     {
         _isGameOver = true;
         _lives = 0;
+        RemoveObjects();
         _gameOver = new TextObject(new Vector3(-3.4f, 2.35f, -6.2f), "GAME OVER  Press R", 0.26f, Color.Orange);
         _world.AddObject(_gameOver);
+        SoundEffects.GameOver();
     }
 
     private void HandleRestart()
@@ -296,7 +299,7 @@ public sealed class SeaBattleGame : UpdateableObject, IKeyboardClickable
         _rWasPressed = rPressed;
     }
 
-    private void Reset()
+    private void RemoveObjects()
     {
         foreach (EnemyShip ship in _ships)
         {
@@ -310,6 +313,12 @@ public sealed class SeaBattleGame : UpdateableObject, IKeyboardClickable
 
         _ships.Clear();
         _torpedoes.Clear();
+    }
+
+    private void Reset()
+    {
+        RemoveObjects();
+        
         if (_gameOver != null)
         {
             _world.RemoveObject(_gameOver);

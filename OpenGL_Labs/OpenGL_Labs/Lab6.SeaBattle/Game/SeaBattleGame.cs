@@ -202,6 +202,11 @@ public sealed class SeaBattleGame : UpdateableObject, IKeyboardClickable
                 }
             }
         }
+
+        if (_isGameOver)
+        {
+            RemoveObjects();
+        }
     }
 
     private void UpdateSinkingShips(float dt)
@@ -277,7 +282,6 @@ public sealed class SeaBattleGame : UpdateableObject, IKeyboardClickable
     {
         _isGameOver = true;
         _lives = 0;
-        RemoveObjects();
         _gameOver = new TextObject(new Vector3(-3.4f, 2.35f, -6.2f), "GAME OVER  Press R", 0.26f, Color.Orange);
         _world.AddObject(_gameOver);
         SoundEffects.GameOver();

@@ -251,10 +251,11 @@ public class World
 
     private void RegisterShaders()
     {
-        _shaderStore.CreateShader( "picking", "./Picking/picking.vert", "./Picking/picking.frag" );
-        _shaderStore.CreateShader( "text", "./Text/text.vert", "./Text/text.frag" );
-        _textureStore.CreateTexture( "text", "./Text/font.png" );
-        _fontStore.CreateFont( "font", "./Text/font.xml" );
+        _shaderStore.CreateShader("picking", "./Picking/picking.vert", "./Picking/picking.frag");
+        _shaderStore.CreateShader("text", "./Text/text.vert", "./Text/text.frag");
+        _shaderStore.CreateShader(LightObject.LightObjectShader, "./Lighting/light.vert", "./Lighting/light.frag");
+        _textureStore.CreateTexture("text", "./Text/font.png");
+        _fontStore.CreateFont("font", "./Text/font.xml");
     }
 
     private uint PerformMouseAction( IMouse mouse, MouseAction action )
@@ -425,7 +426,9 @@ public class World
 
     public void AddLight( LightEntity light )
     {
-        _lights.Add( light );
+        _lights.Add(light);
+        LightObject o = new LightObject(light.Position);
+        AddObject(o);
     }
 
     public bool RemoveLight( LightEntity light )

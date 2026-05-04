@@ -78,7 +78,7 @@ class Program
         var labyrinth = new LabyrinthField(world, player, map, materialMap, "PbrShader");
         world.AddObject(labyrinth);
 
-        world.AddLight(new LightEntity(new Vector3(0, 1.5f, 5f), new Vector3(1.0f, 0.9f, 0.8f))
+        world.AddLight(new LightEntity(new Vector3(0, 3.5f, 5f), new Vector3(1.0f, 0.9f, 0.8f))
         {
             Ambient = new Vector3(0.2f),
             Specular = new Vector3(1.0f, 1.0f, 1.0f),

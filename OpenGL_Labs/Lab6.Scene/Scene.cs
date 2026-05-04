@@ -49,7 +49,7 @@ public class Scene : UpdateableObject, IKeyboardClickable
         Vector3 delta = (_ballDirection with { Y = _currentBallSpeedY }) * ddt;
 
         _ball.Transform.Position += delta;
-        _currentBallSpeedY -= (float)dt * ddt * 5;
+        _currentBallSpeedY -= ddt * 0.02f;
 
         if (_ball.Transform.Position.Y < 0f)
         {

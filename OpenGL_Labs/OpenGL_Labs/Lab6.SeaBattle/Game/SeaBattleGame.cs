@@ -282,7 +282,7 @@ public sealed class SeaBattleGame : UpdateableObject, IKeyboardClickable
     {
         _isGameOver = true;
         _lives = 0;
-        _gameOver = new TextObject(new Vector3(-3.4f, 2.35f, -6.2f), "GAME OVER  Press R", 0.26f, Color.Orange);
+        _gameOver = new TextObject(new Vector3(-3.4f, 2.35f, -6.2f), "GAME OVER\nPress R", 0.26f, Color.Orange);
         _world.AddObject(_gameOver);
         SoundEffects.GameOver();
     }
@@ -350,7 +350,7 @@ public sealed class SeaBattleGame : UpdateableObject, IKeyboardClickable
     {
         string torpedo = _cooldownRemaining <= 0f ? "READY" : $"{_cooldownRemaining:0.0}s";
         int angle = (int)MathF.Round(_aimYaw * 180f / MathF.PI);
-        return $"Lives: {_lives}   Score: {_score}   Torpedo: {torpedo}   Aim: {angle} deg   A/D aim   Space fire";
+        return $"Lives: {_lives}\nScore: {_score}\nTorpedo: {torpedo}\nAim: {angle} deg\nA/D aim ; Space fire";
     }
 
     private float RandomRange(float min, float max) => min + (float)_random.NextDouble() * (max - min);

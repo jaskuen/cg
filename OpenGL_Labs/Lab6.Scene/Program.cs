@@ -45,20 +45,29 @@ public class Program
         ModelData fieldData = ModelLoader.Load("Models/field.obj");
         ModelObject field = new ModelObject(ShaderName, fieldData);
         field.Transform.Scale = Vector3.One;
-        
+
         ModelData canonData = ModelLoader.Load("Models/canon.glb");
         ModelObject canon = new ModelObject(ShaderName, canonData);
         canon.Transform.Scale = new Vector3(0.08f);
         canon.Transform.Position = new Vector3(-3f, 0.5f, 20f);
-        
+
         ModelData kageyamaData = ModelLoader.Load("Models/kageyama.glb");
         ModelObject kageyama = new ModelObject(ShaderName, kageyamaData);
         kageyama.Transform.Scale = new Vector3(0.04f);
 
         Scene scene = new Scene(world, ball2, kageyama);
 
-        world.AddLight(new LightEntity(new Vector3(0f, 18f, 12f), new Vector3(1.4f)));
-        world.AddLight(new LightEntity(new Vector3(-18f, 12f, -18f), new Vector3(0.8f)));
+        ModelData poleData = ModelLoader.Load("Models/pole.glb");
+        ModelObject pole1 = new ModelObject(ShaderName, poleData);
+        ModelObject pole2 = new ModelObject(ShaderName, poleData);
+        pole1.Transform.Scale = new Vector3(0.04f);
+        pole2.Transform.Scale = new Vector3(0.04f);
+
+        world.AddLight(new LightEntity(new Vector3(7f, 10f, 15f), new Vector3(10.4f)));
+        pole1.Transform.Position = new Vector3(7f, 0f, 15f);
+        world.AddLight(new LightEntity(new Vector3(-7f, 10f, -15f), new Vector3(10.4f)));
+        pole2.Transform.Rotation = Quaternion.CreateFromAxisAngle(Vector3.UnitY, 180);
+        pole2.Transform.Position = new Vector3(-7f, 0f, -15f);
 
         world.AddObject(field);
         world.AddObject(ball);
@@ -66,6 +75,8 @@ public class Program
         world.AddObject(canon);
         world.AddObject(kageyama);
         world.AddObject(scene);
+        world.AddObject(pole1);
+        world.AddObject(pole2);
         world.Run();
     }
 }

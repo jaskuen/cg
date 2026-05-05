@@ -74,25 +74,6 @@ public static class MeshFactory
         return new PrimitiveMesh(vertices, indices);
     }
 
-    private static PrimitiveMesh CreateBox()
-    {
-        List<float> vertices = [];
-        List<uint> indices = [];
-        Vector3[] corners =
-        [
-            new(-0.5f, -0.5f,  0.5f), new(0.5f, -0.5f,  0.5f), new(0.5f, 0.5f,  0.5f), new(-0.5f, 0.5f,  0.5f),
-            new(-0.5f, -0.5f, -0.5f), new(-0.5f, 0.5f, -0.5f), new(0.5f, 0.5f, -0.5f), new(0.5f, -0.5f, -0.5f)
-        ];
-
-        AddQuad(vertices, indices, corners[0], corners[1], corners[2], corners[3], Vector3.UnitZ);
-        AddQuad(vertices, indices, corners[4], corners[5], corners[6], corners[7], -Vector3.UnitZ);
-        AddQuad(vertices, indices, corners[4], corners[0], corners[3], corners[5], -Vector3.UnitX);
-        AddQuad(vertices, indices, corners[1], corners[7], corners[6], corners[2], Vector3.UnitX);
-        AddQuad(vertices, indices, corners[3], corners[2], corners[6], corners[5], Vector3.UnitY);
-        AddQuad(vertices, indices, corners[4], corners[7], corners[1], corners[0], -Vector3.UnitY);
-        return new PrimitiveMesh(vertices.ToArray(), indices.ToArray());
-    }
-
     private static void AddQuad(List<float> vertices, List<uint> indices, Vector3 a, Vector3 b, Vector3 c, Vector3 d, Vector3 normal)
     {
         uint start = (uint)(vertices.Count / 8);

@@ -49,8 +49,8 @@ internal static class Program
         });
 
         SeaBattleGame game = new(world);
-        AimBackdrop aimBackdrop = new(SkyShader);
-        world.AddObject(aimBackdrop);
+        Sky sky = new(SkyShader);
+        world.AddObject(sky);
         game.Start();
         world.AddObject(game);
 

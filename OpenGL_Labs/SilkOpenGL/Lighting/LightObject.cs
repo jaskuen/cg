@@ -19,6 +19,8 @@ public class LightObject : RenderableObject
 
     public override unsafe void OnRender(double dt)
     {
+        _vbo.Bind();
+        _ebo.Bind();
         _vao.Bind();
         _shader.Use();
 

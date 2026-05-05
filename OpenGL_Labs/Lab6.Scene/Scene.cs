@@ -6,7 +6,7 @@ using SilkOpenGL.Objects;
 
 namespace Lab6.Scene;
 
-public class Scene : UpdateableObject, IKeyboardClickable
+internal class Scene : UpdateableObject, IKeyboardClickable
 {
     private readonly World _world;
     private readonly RenderableObject _ball;

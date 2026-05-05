@@ -5,11 +5,11 @@ using SilkOpenGL.Objects;
 
 namespace Lab6.SeaBattle.Rendering;
 
-public sealed class AimBackdrop : RenderableObject
+public sealed class Sky : RenderableObject
 {
     private uint _skyTexture;
 
-    public AimBackdrop(string shaderKey) : base(shaderKey)
+    public Sky(string shaderKey) : base(shaderKey)
     {
         _transform.Position = new Vector3(0f, 6.5f, -36f);
     }

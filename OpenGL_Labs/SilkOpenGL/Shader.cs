@@ -11,14 +11,20 @@ public class Shader : IDisposable
 
     // ─── поля, которые можно задать заранее ───
     private readonly string _vertexPath;
+    private readonly string? _geometryPath;
     private readonly string _fragmentPath;
     private bool _isCompiled;
 
     public uint ProgramId => _handle;
 
-    public Shader(string vertexPath, string fragmentPath)
+    public Shader(string vertexPath, string fragmentPath) : this(vertexPath, null, fragmentPath)
+    {
+    }
+
+    public Shader(string vertexPath, string? geometryPath, string fragmentPath)
     {
         _vertexPath = vertexPath ?? throw new ArgumentNullException(nameof(vertexPath));
+        _geometryPath = geometryPath;
         _fragmentPath = fragmentPath ?? throw new ArgumentNullException(nameof(fragmentPath));
         _isCompiled = false;
     }
@@ -31,12 +37,24 @@ public class Shader : IDisposable
 
         _gl = gl;
 
-        uint vertex = LoadShader(ShaderType.VertexShader, _vertexPath);
-        uint fragment = LoadShader(ShaderType.FragmentShader, _fragmentPath);
+        List<uint> shaders =
+        [
+            LoadShader(ShaderType.VertexShader, _vertexPath)
+        ];
+
+        if (_geometryPath != null)
+        {
+            shaders.Add(LoadShader(ShaderType.GeometryShader, _geometryPath));
+        }
+
+        shaders.Add(LoadShader(ShaderType.FragmentShader, _fragmentPath));
 
         _handle = _gl.CreateProgram();
-        _gl.AttachShader(_handle, vertex);
-        _gl.AttachShader(_handle, fragment);
+        foreach (uint shader in shaders)
+        {
+            _gl.AttachShader(_handle, shader);
+        }
+
         _gl.LinkProgram(_handle);
 
         _gl.GetProgram(_handle, GLEnum.LinkStatus, out var status);
@@ -45,10 +63,11 @@ public class Shader : IDisposable
             throw new Exception($"Program failed to link: {_gl.GetProgramInfoLog(_handle)}");
         }
 
-        _gl.DetachShader(_handle, vertex);
-        _gl.DetachShader(_handle, fragment);
-        _gl.DeleteShader(vertex);
-        _gl.DeleteShader(fragment);
+        foreach (uint shader in shaders)
+        {
+            _gl.DetachShader(_handle, shader);
+            _gl.DeleteShader(shader);
+        }
 
         _isCompiled = true;
     }

@@ -9,6 +9,11 @@ public class ShaderStore : IDisposable
         _shaders.Add(shaderKey, new Shader(vertexSource, fragmentSource));
     }
 
+    public void CreateShader(string shaderKey, string vertexSource, string geometrySource, string fragmentSource)
+    {
+        _shaders.Add(shaderKey, new Shader(vertexSource, geometrySource, fragmentSource));
+    }
+
     public Shader GetShader(string shaderKey)
     {
         return _shaders[shaderKey];

@@ -25,6 +25,11 @@ public class StoreManager
         _shaderStore.CreateShader(key, vertexPath, fragmentPath);
     }
 
+    public void AddShader(string key, string vertexPath, string geometryPath, string fragmentPath)
+    {
+        _shaderStore.CreateShader(key, vertexPath, geometryPath, fragmentPath);
+    }
+
     public void AddTexture(string key, string path)
     {
         _textureStore.CreateTexture(key, path);

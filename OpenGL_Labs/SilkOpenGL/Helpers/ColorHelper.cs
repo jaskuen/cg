@@ -1,4 +1,5 @@
 ﻿using System.Drawing;
+using System.Numerics;
 
 namespace SilkOpenGL.Helpers;
 
@@ -25,5 +26,10 @@ public static class ColorHelper
         }
 
         return Color.FromArgb(color.A, (int)red, (int)green, (int)blue);
+    }
+
+    public static Vector3 ColorToVector3(Color color)
+    {
+        return new Vector3(color.R / 255f, color.G / 255f, color.B / 255f);
     }
 }

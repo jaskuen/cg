@@ -8,6 +8,7 @@ using SilkOpenGL.Camera;
 using SilkOpenGL.Lighting;
 using SilkOpenGL.Model;
 using SilkOpenGL.Objects;
+using SilkOpenGL.RayTracing;
 using SilkOpenGL.Store;
 
 namespace SilkOpenGL;
@@ -30,12 +31,18 @@ public class World
 
     private readonly List<IKeyboardClickable> _keyboardClickables = [];
     private readonly List<LightEntity> _lights = [];
+    private readonly List<IRayTraceable> _rayTraceables = [];
 
     private IClickable? _lastActive;
 
     private bool _useMouseCameraMove = false;
     private bool _useKeyboardCameraMove = false;
     private uint _textureHandlesSsbo;
+    private RayTracingRenderer _rayTracingRenderer;
+    private RayTracingFramePresenter? _rayTracingFramePresenter;
+
+    public RenderMode RenderMode { get; set; } = RenderMode.Rasterization;
+    public RayTracingSettings RayTracingSettings { get; }
 
     public World(
         WindowOptions windowOptions,
@@ -55,6 +62,8 @@ public class World
         _camera = camera ?? new CameraObject();
         _cameraMode = _camera.Mode;
         _pickingService = new PickingService( windowOptions.Size.X, windowOptions.Size.Y );
+        RayTracingSettings = new RayTracingSettings();
+        _rayTracingRenderer = new RayTracingRenderer( RayTracingSettings );
         _useMouseCameraMove = useMouseCameraMove;
         _useKeyboardCameraMove = useKeyboardCameraMove;
 
@@ -105,6 +114,7 @@ public class World
 
         RegisterShaders();
         CompileShadersAndTextures();
+        _rayTracingFramePresenter = new RayTracingFramePresenter( _gl, _shaderStore.GetShader( "rayTracingScreen" ) );
 
         AddInputContext();
     }
@@ -119,6 +129,13 @@ public class World
         _gl.ClearColor( Color.DarkSlateGray );
         _gl.Clear( ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit );
         EnsureTextureResources();
+
+        if ( RenderMode == RenderMode.RayTracing )
+        {
+            byte[] framebuffer = _rayTracingRenderer.Render( _camera, _rayTraceables, _lights, _window.Size );
+            _rayTracingFramePresenter?.Present( framebuffer, RayTracingSettings.RenderWidth, RayTracingSettings.RenderHeight );
+            return;
+        }
 
         foreach ( var kv in _shaderStore.AllShaders )
         {
@@ -153,6 +170,7 @@ public class World
             _textureHandlesSsbo = 0;
         }
 
+        _rayTracingFramePresenter?.Dispose();
         _shaderStore.Dispose();
         _textureStore.Dispose();
     }
@@ -254,6 +272,7 @@ public class World
         _shaderStore.CreateShader("picking", "./Picking/picking.vert", "./Picking/picking.frag");
         _shaderStore.CreateShader("text", "./Text/text.vert", "./Text/text.frag");
         _shaderStore.CreateShader(LightObject.LightObjectShader, "./Lighting/light.vert", "./Lighting/light.frag");
+        _shaderStore.CreateShader("rayTracingScreen", "./RayTracing/screen_quad.vert", "./RayTracing/screen_quad.frag");
         _textureStore.CreateTexture("text", "./Text/font.png");
         _fontStore.CreateFont("font", "./Text/font.xml");
     }
@@ -368,6 +387,11 @@ public class World
     // Публичные методы для добавления/удаления
     public void AddObject( UpdateableObject obj )
     {
+        if ( obj is IRayTraceable rayTraceable )
+        {
+            _rayTraceables.Add( rayTraceable );
+        }
+
         if ( obj is LightEntity lightEntity )
         {
             _lights.Add( lightEntity );
@@ -413,6 +437,11 @@ public class World
 
     public void RemoveObject( RenderableObject obj )
     {
+        if ( obj is IRayTraceable rayTraceable )
+        {
+            _rayTraceables.Remove( rayTraceable );
+        }
+
         if ( obj is ModelObject modelObject )
         {
             foreach ( var mesh in modelObject.Meshes )
